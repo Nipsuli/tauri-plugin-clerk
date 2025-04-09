@@ -13,6 +13,7 @@ tauri = { version = "2.4.1" }
 serde = "1.0"
 thiserror = "2"
 clerk-fapi-rs = "0.1.0"
+tokio = { version = "1", features = ["sync"] }
 
 [build-dependencies]
 tauri-plugin = { version = "2.1.1", features = ["build"] }

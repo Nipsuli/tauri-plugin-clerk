@@ -9,6 +9,18 @@ pub enum Error {
   #[cfg(mobile)]
   #[error(transparent)]
   PluginInvoke(#[from] tauri::plugin::mobile::PluginInvokeError),
+  
+  #[error("Clerk initialization error: {0}")]
+  Initialization(String),
+  
+  #[error("Clerk client is not initialized")]
+  Uninitialized,
+  
+  #[error("Clerk API error: {0}")]
+  ClerkApi(String),
+  
+  #[error("Authentication error: {0}")]
+  Authentication(String),
 }
 
 impl Serialize for Error {
