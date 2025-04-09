@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, command, Runtime};
+use tauri::{AppHandle, command, Runtime};
 
 use crate::models::*;
 use crate::Result;
@@ -19,22 +19,17 @@ pub(crate) async fn initialize<R: Runtime + Clone>(
     proxy: Option<String>,
     domain: Option<String>,
 ) -> Result<bool> {
-    // We need to get a mutable reference to state from the app
-    // Since we can't directly mutate app state, we'll need to:
-    // 1. Get a clone of the current state
-    // 2. Modify that clone
-    // 3. Replace the state with the modified clone
+    // Get a reference to the clerk store
+    let store = app.clerk_store();
     
-    // Step 1: Get current state (clerk instance)
-    let clerk_state = app.state::<crate::Clerk<R>>();
-    let mut clerk = clerk_state.inner().clone();
+    // Acquire a write lock on the store
+    let mut store_guard = store.write().await;
     
-    // Step 2: Initialize the clerk client (this modifies our local clone)
+    // Get a mutable reference to the clerk instance
+    let clerk = &mut store_guard.clerk;
+    
+    // Initialize the clerk client with the provided parameters
     clerk.initialize(publishable_key, proxy, domain).await?;
-    
-    // Step 3: Replace the app state with our updated clone
-    // This drops the existing state and manages the new one
-    app.manage(clerk);
     
     Ok(true)
 }

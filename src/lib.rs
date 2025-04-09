@@ -1,8 +1,9 @@
 // Import clerk-fapi-rs types
 use tauri::{
   plugin::{Builder, TauriPlugin},
-  Manager, Runtime,
+  Manager, Runtime, State,
 };
+use tokio::sync::RwLock;
 
 pub use models::*;
 
@@ -22,14 +23,30 @@ use desktop::Clerk;
 #[cfg(mobile)]
 use mobile::Clerk;
 
+/// Internal structure to hold the Clerk client instance
+pub struct ClerkStoreInternal<R: Runtime + Clone> {
+  pub clerk: Clerk<R>,
+}
+
+/// Thread-safe wrapper around the Clerk store with read/write access
+pub type ClerkStore<R> = RwLock<ClerkStoreInternal<R>>;
+
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the clerk APIs.
 pub trait ClerkExt<R: Runtime + Clone> {
+  /// Get a reference to the Clerk instance
   fn clerk(&self) -> &Clerk<R>;
+
+  /// Get a reference to the Clerk store
+  fn clerk_store(&self) -> State<ClerkStore<R>>;
 }
 
 impl<R: Runtime + Clone, T: Manager<R>> crate::ClerkExt<R> for T {
   fn clerk(&self) -> &Clerk<R> {
     self.state::<Clerk<R>>().inner()
+  }
+
+  fn clerk_store(&self) -> State<ClerkStore<R>> {
+    self.state::<ClerkStore<R>>()
   }
 }
 
@@ -87,11 +104,19 @@ impl ClerkPluginBuilder {
         commands::initialize
       ])
       .setup(move |app, api| {
+        // Create the Clerk instance
         #[cfg(mobile)]
         let clerk = mobile::init(app, api, publishable_key)?;
         #[cfg(desktop)]
         let clerk = desktop::init(app, api, publishable_key)?;
+        
+        // Create the store wrapper
+        let store = RwLock::new(ClerkStoreInternal { clerk: clerk.clone() });
+        
+        // Register both the clerk instance and the store with Tauri
         app.manage(clerk);
+        app.manage(store);
+        
         Ok(())
       })
       .build()
