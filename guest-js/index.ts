@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ClientJSON } from "@clerk/types";
+import { listen } from "@tauri-apps/api/event";
+import {
+  ClientJSON,
+  OrganizationJSON,
+  SessionJSON,
+  UserJSON,
+} from "@clerk/types";
 
 /**
  * We call initialize immediately on load to ensure the clerk client
@@ -15,3 +21,19 @@ invoke<ClientJSON>("plugin:clerk|initialize")
   .catch((e) => {
     console.error("Plugin:clerk: Failed to initialize Clerk", e);
   });
+
+type ClerkAuthCbEvent = {
+  client: ClientJSON;
+  session: SessionJSON | null;
+  user: UserJSON | null;
+  organization: OrganizationJSON | null;
+};
+
+listen<ClerkAuthCbEvent>("plugin:clerk|auth_cb", (event) => {
+  const authEvent = event.payload;
+  // TODO:
+  // * update local client state from the event
+  console.log("Received auth event", authEvent);
+}).catch((e) => {
+  console.error("Plugin:clerk: failed to initialize auth event listener", e);
+});
