@@ -1,9 +1,17 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from "@tauri-apps/api/core";
+import { ClientJSON } from "@clerk/types";
 
-export async function ping(value: string): Promise<string | null> {
-  return await invoke<{value?: string}>('plugin:clerk|ping', {
-    payload: {
-      value,
-    },
-  }).then((r) => (r.value ? r.value : null));
-}
+/**
+ * We call initialize immediately on load to ensure the clerk client
+ * is initialized
+ */
+invoke<ClientJSON>("plugin:clerk|initialize")
+  .then((client) => {
+    // TODO:
+    // * we have clerk now initialized, setup Clerk to window object
+    //   with all the needed bells and whistles
+    console.log("Initialized clerk with", client);
+  })
+  .catch((e) => {
+    console.error("Plugin:clerk: Failed to initialize Clerk", e);
+  });
