@@ -20,7 +20,7 @@ pub type ClerkStore = RwLock<ClerkStoreInternal>;
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the clerk APIs.
 #[allow(async_fn_in_trait)]
-pub trait ClerkExt<R: Runtime + Clone> {
+pub trait ClerkExt<R: Runtime> {
     /// Get a reference to the Clerk instance
     fn clerk(&self) -> Clerk;
 
@@ -36,7 +36,7 @@ pub struct ClerkAuthEvent {
     organization: Option<ClientPeriodOrganization>,
 }
 
-fn clerk_auth_cb<R: Runtime + Clone>(
+fn clerk_auth_cb<R: Runtime>(
     app: AppHandle<R>,
     client: ClientPeriodClient,
     session: Option<ClientPeriodSession>,
@@ -44,7 +44,7 @@ fn clerk_auth_cb<R: Runtime + Clone>(
     organization: Option<ClientPeriodOrganization>,
 ) {
     if let Err(e) = app.emit(
-        "plugin:clerk|auth_cb",
+        "plugin-clerk-auth-cb",
         ClerkAuthEvent {
             client,
             session,
@@ -56,7 +56,7 @@ fn clerk_auth_cb<R: Runtime + Clone>(
     }
 }
 
-impl<R: Runtime + Clone, T: Manager<R>> crate::ClerkExt<R> for T {
+impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
     fn clerk(&self) -> Clerk {
         let app = self.app_handle();
         let clerk = {
@@ -132,12 +132,12 @@ impl ClerkPluginBuilder {
     }
 
     /// Build the Tauri plugin
-    pub fn build<R: Runtime + Clone>(self) -> TauriPlugin<R> {
+    pub fn build<R: Runtime>(self) -> TauriPlugin<R> {
         let publishable_key = self
             .publishable_key
             .or_else(|| std::env::var("CLERK_PUBLISHABLE_KEY").ok());
 
-        Builder::new("clerk")
+        Builder::<R>::new("clerk")
             .invoke_handler(tauri::generate_handler![commands::initialize])
             .setup(move |app, _api| {
                 let config = ClerkFapiConfiguration::new_with_store(
@@ -156,14 +156,4 @@ impl ClerkPluginBuilder {
             })
             .build()
     }
-}
-
-/// Initializes the plugin with default configuration.
-pub fn init<R: Runtime + Clone>() -> TauriPlugin<R> {
-    ClerkPluginBuilder::new().build()
-}
-
-/// Create a new builder for configuring the Clerk plugin
-pub fn builder() -> ClerkPluginBuilder {
-    ClerkPluginBuilder::new()
 }
