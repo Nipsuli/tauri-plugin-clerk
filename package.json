@@ -22,6 +22,7 @@
     "pretest": "pnpm build"
   },
   "dependencies": {
+    "@clerk/clerk-js": "^5.67.2",
     "@clerk/types": "^4.59.0",
     "@tauri-apps/api": ">=2.5.0"
   },

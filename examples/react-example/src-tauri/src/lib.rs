@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 // Compile time variable
 pub const CLERK_PUBLIC_KEY: &str = env!("CLERK_PUBLISHABLE_KEY");
 
@@ -16,6 +18,11 @@ pub fn run() {
                 .publishable_key(CLERK_PUBLIC_KEY)
                 .build(),
         )
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            app.get_webview_window("main").unwrap().open_devtools();
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
