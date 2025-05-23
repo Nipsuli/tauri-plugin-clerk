@@ -66,13 +66,15 @@ export const init = async (
       ({ client, session, user, organization }): void => {
         // We do bit of casting, the XxxJSONSnapshot matches the XxxJSON forma
         // it's bit more relaxed, but has the same shape and types
-        emitClerkAuthEvent({
-          client: client.__internal_toSnapshot() as ClientJSON,
-          session: (session?.__internal_toSnapshot() ??
-            null) as SessionJSON | null,
-          user: (user?.__internal_toSnapshot() ?? null) as UserJSON | null,
-          organization: organization?.__internal_toSnapshot() ?? null,
-        });
+        console.log(client);
+
+        // emitClerkAuthEvent({
+        //   client: client.__internal_toSnapshot() as ClientJSON,
+        //   session: (session?.__internal_toSnapshot() ??
+        //     null) as SessionJSON | null,
+        //   user: (user?.__internal_toSnapshot() ?? null) as UserJSON | null,
+        //   organization: organization?.__internal_toSnapshot() ?? null,
+        // });
       },
     );
   }
@@ -81,10 +83,7 @@ export const init = async (
   // cache we can intitlize even when no network connection
   // similar to clerk-expo
   // oxlint-disable-next-line eslint/require-await
-  __internalClerk.__internal_getCachedResources = async (): Promise<{
-    client: ClientJSONSnapshot;
-    environment: EnvironmentJSONSnapshot;
-  }> => ({
+  __internalClerk.__internal_getCachedResources = async () => ({
     client: client as ClientJSONSnapshot,
     environment: environment as EnvironmentJSONSnapshot,
   });

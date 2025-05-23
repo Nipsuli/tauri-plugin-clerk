@@ -1,11 +1,13 @@
 import type {
-  Clerk,
   ClientJSON,
+  ClientJSONSnapshot,
+  ClientResource,
   EnvironmentJSON,
   OrganizationJSON,
   SessionJSON,
   UserJSON,
 } from "@clerk/types";
+import type { Clerk } from "@clerk/clerk-js";
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -39,14 +41,39 @@ type ClerkAuthEvent = {
 
 const CLERK_AUTH_EVENT_NAME = "plugin-clerk-auth-cb";
 
+const shouldUpdate = (_oldClient: ClientResource, _newClient: ClientJSON) => {
+  // TODO figure out best way to check if the Client has changed
+  return true;
+};
+
+// We know the internal client field in clerk-js has the fromJSON method
+type Client = ClientResource & {
+  fromJSON: (data: ClientJSON | ClientJSONSnapshot | null) => ClientResource;
+};
+
+const updateClerkClient = (
+  clerk: Clerk,
+  oldClient: Client,
+  newClient: ClientJSON,
+) => {
+  clerk.updateClient(oldClient.fromJSON(newClient));
+};
+
 export const initListener = async (clerk: Clerk) => {
   await listen<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, (event) => {
     const authEvent = event.payload;
-    if (authEvent.source === __internalWindowLabel) {
-      logger.info({ authEvent }, "Received auth event FROM SELF");
-    } else {
-      // set clerk client
+    if (authEvent.source !== __internalWindowLabel) {
       logger.info({ authEvent }, "Received auth event ELSEWHERE");
+      const oldClient = clerk.client;
+      if (oldClient && shouldUpdate(oldClient, authEvent.payload.client)) {
+        updateClerkClient(clerk, oldClient as Client, authEvent.payload.client);
+      } else {
+        // We probably do not need to do anything here as we've
+        // initialized the clerk here in JS land as well and it
+        // then has Client
+      }
+    } else {
+      logger.info({ authEvent }, "Received auth event FROM SELF");
     }
   });
 };

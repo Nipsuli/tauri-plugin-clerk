@@ -26,6 +26,7 @@
     "eslint/no-ternary": "off",
     "unicorn/no-nested-ternary": "off",
     "eslint/yoda": "off",
-    "eslint/max-lines": "off"
+    "eslint/max-lines": "off",
+    "eslint/no-negated-condition": "off"
   }
 }
