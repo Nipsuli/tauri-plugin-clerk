@@ -3,12 +3,15 @@ use clerk_fapi_rs::{
     models::{ClientPeriodClient, ClientPeriodOrganization, ClientPeriodSession, ClientPeriodUser},
     Clerk, ClerkFapiConfiguration,
 };
-use events::{emit_clerk_auth_event, ClerkAuthEventPayload};
+use events::{
+    emit_clerk_auth_event, ClerkAuthEvent, ClerkAuthEventPayload, CLERK_AUTH_EVENT_NAME,
+    RUST_EVENT_SOURCE,
+};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tauri::{
     plugin::{Builder, TauriPlugin},
-    AppHandle, Manager, Runtime,
+    AppHandle, Listener, Manager, Runtime,
 };
 
 mod commands;
@@ -69,8 +72,13 @@ impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
 
     async fn ensure_clerk_initialized(&self) -> Result<(), String> {
         let app_handle = self.app_handle();
+
+        // To avoid concurrent load calls, example multi window apps
+        // or running init call in React.useEffect hook
         let app_clerk_init_lock = app_handle.state::<ClerkInitLock>();
         let _app_clerk_init_lock = app_clerk_init_lock.lock().await;
+        //
+
         let clerk = self.clerk();
         if !clerk.loaded() {
             // Prefer cached resources, In case one uses persisted ClerkStore
@@ -78,11 +86,27 @@ impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
             // TODO: in the clerk fapi rs add reload mechanism, so here in case
             // we ended up loading from cache we can trigger background task
             // to refresh the cache
-            clerk.load(true).await.map_err(|e| e.to_string())?;
-            let app_handle = app_handle.clone();
+            clerk.load().await.map_err(|e| e.to_string())?;
+            let app_handle_inner = app_handle.clone();
             clerk.add_listener(move |client, session, user, organization| {
-                let app_handle_clone = app_handle.clone();
+                let app_handle_clone = app_handle_inner.clone();
                 clerk_auth_cb(app_handle_clone, client, session, user, organization);
+            });
+
+            let app_handle_inner = app_handle.clone();
+            app_handle.listen(CLERK_AUTH_EVENT_NAME, move |event| {
+                let app_handle = app_handle_inner.clone();
+                let payload = event.payload();
+                if let Ok(payload) = serde_json::from_str::<ClerkAuthEvent>(payload) {
+                    if payload.source != RUST_EVENT_SOURCE {
+                        println!("Received CLIENT ClerkAuthEvent: {:?}", payload);
+                        let _ = app_handle
+                            .clerk()
+                            .set_client(payload.payload.client.clone());
+                    } else {
+                        println!("Received SELF ClerkAuthEvent: {:?}", payload);
+                    }
+                }
             });
         }
         Ok(())

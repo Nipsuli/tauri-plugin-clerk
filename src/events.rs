@@ -4,7 +4,8 @@ use clerk_fapi_rs::models::{
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Runtime};
 
-const CLERK_AUTH_EVENT_NAME: &str = "plugin-clerk-auth-cb";
+pub const CLERK_AUTH_EVENT_NAME: &str = "plugin-clerk-auth-cb";
+pub const RUST_EVENT_SOURCE: &str = "rust";
 
 /// Need to be in sync with js side
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
@@ -17,15 +18,15 @@ pub struct ClerkAuthEventPayload {
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClerkAuthEvent {
     // Window name or "rust" to identify sender
-    source: String,
-    payload: ClerkAuthEventPayload,
+    pub source: String,
+    pub payload: ClerkAuthEventPayload,
 }
 
 pub fn emit_clerk_auth_event<R: Runtime>(app: AppHandle<R>, payload: ClerkAuthEventPayload) {
     if let Err(e) = app.emit(
         CLERK_AUTH_EVENT_NAME,
         ClerkAuthEvent {
-            source: "rust".to_string(),
+            source: RUST_EVENT_SOURCE.to_string(),
             payload,
         },
     ) {

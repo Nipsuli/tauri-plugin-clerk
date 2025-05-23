@@ -2,9 +2,7 @@ import type {
   ClerkOptions,
   ClientJSON,
   ClientJSONSnapshot,
-  EnvironmentJSON,
   EnvironmentJSONSnapshot,
-  OrganizationJSON,
   SessionJSON,
   UserJSON,
 } from "@clerk/types";
@@ -12,14 +10,20 @@ import type {
   FapiRequestInit,
   FapiResponse,
 } from "@clerk/clerk-js/dist/types/core/fapiClient";
-
 import { Clerk } from "@clerk/clerk-js";
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
-import { listen, emit } from "@tauri-apps/api/event";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import z from "zod";
+import { type Logger, logger, setLogger } from "./logger";
+import {
+  emitClerkAuthEvent,
+  getClientJWT,
+  getInitArgs,
+  initListener,
+  saveClientJWT,
+} from "./sync";
+import { applyGlobalPatches } from "./patching";
+
+export type { Logger, LoggerParams } from "./logger";
+export { consoleLogger, noopLogger } from "./logger";
 
 // TODO: read from package.json
 const sdkMetadata = {
@@ -28,216 +32,10 @@ const sdkMetadata = {
 };
 
 //
-// LOGGER
-//
-
-export type LoggerParams = { [key: string]: unknown };
-
-export type Logger = {
-  info: (params: LoggerParams, message: string) => void;
-  warn: (params: LoggerParams, message: string) => void;
-  error: (params: LoggerParams & { error: Error }, message: string) => void;
-};
-
-export const consoleLogger = (): Logger => ({
-  info: (params, message) => console.info(message, params), // oxlint-disable-line no-console
-  warn: (params, message) => console.warn(message, params), // oxlint-disable-line no-console
-  error: ({ error, ...params }, message) =>
-    console.error(message, error, params), // oxlint-disable-line no-console
-});
-
-export const noopLogger = (): Logger => ({
-  info: (_params, _message) => {}, // oxlint-disable-line no-empty-function
-  warn: (_params, _message): void => {}, // oxlint-disable-line no-empty-function
-  error: (_params, _message) => {}, // oxlint-disable-line no-empty-function
-});
-
-const toError = (error: unknown): Error => {
-  if (error instanceof Error) {
-    return error;
-  } else if (typeof error === "string") {
-    return new Error(error);
-  } else {
-    return new Error(JSON.stringify(error));
-  }
-};
-
-const logError = (message: string) => (error: unknown) =>
-  __internalLogger.error({ error: toError(error) }, message);
-
-export const setLogger = (newLogger: Logger): void => {
-  __internalLogger = newLogger;
-};
-
-//
-// PATCHING
-//
-// To code around some Clerk limitations we're piping
-// clerk requests through rust
-//
-const realFetch = globalThis.fetch;
-
-type Fetch = typeof realFetch;
-type FetchReturn = ReturnType<Fetch>;
-type FetchArgs = Parameters<Fetch>;
-
-const RequestInitSchema = z
-  .object({
-    clientConfig: z.object({
-      url: z.string(),
-      headers: z.array(z.tuple([z.string(), z.string()])),
-      // We only care about headers and url
-      method: z.string(),
-      data: z.any(),
-      maxRedirections: z.any(),
-      connectTimeout: z.any(),
-      proxy: z.any(),
-    }),
-  })
-  .strict();
-
-const urlForRequestInput = (input: FetchArgs[0]) =>
-  typeof input === "string"
-    ? new URL(input)
-    : input instanceof URL
-      ? input
-      : new URL(input.url);
-
-const runTauriFetch = async (input: FetchArgs[0], init: FetchArgs[1]) => {
-  const req = new Request(input, init);
-  const res = await tauriFetch(req);
-  return res;
-};
-
-const shouldRunTauriFetch = (input: FetchArgs[0], init: FetchArgs[1]) => {
-  const initHeaders = init?.headers;
-
-  if (initHeaders) {
-    if (initHeaders instanceof Headers) {
-      return initHeaders.has("x-tauri-fetch");
-    } else if (Array.isArray(initHeaders)) {
-      return initHeaders.some((h) => h[0] === "x-tauri-fetch");
-    } else {
-      return !!initHeaders["x-tauri-fetch"];
-    }
-  }
-
-  if (input instanceof Request) {
-    return input.headers.has("x-tauri-fetch");
-  }
-  return false;
-};
-
-const runRealFetch = async (input: FetchArgs[0], init: FetchArgs[1]) => {
-  // tauri-plugin-http uses plain fetch so we here indentify
-  // if we should modify the request headers that are sent
-  // via tauri fetch
-  const url = urlForRequestInput(input);
-  const path = decodeURIComponent(url.pathname);
-  const shouldInjectHeaders = path === "/plugin:http|fetch";
-
-  let initToPass = init;
-
-  if (shouldInjectHeaders && typeof init?.body === "string") {
-    const rawBody = JSON.parse(init.body) as unknown;
-    const body = RequestInitSchema.parse(rawBody);
-    const headers = [
-      ...body.clientConfig.headers,
-      ["User-Agent", window.navigator.userAgent],
-    ];
-
-    if (body.clientConfig.headers.some((h) => h[0] === "x-no-origin")) {
-      headers.push(["Origin", ""]);
-    } else {
-      headers.push(["Origin", window.location.origin]);
-    }
-
-    initToPass = {
-      ...init,
-      body: JSON.stringify({
-        ...body,
-        clientConfig: {
-          ...body.clientConfig,
-          headers,
-        },
-      }),
-    };
-  }
-
-  const res = await realFetch(input, initToPass);
-
-  return res;
-};
-
-const patchFetch = async (
-  input: FetchArgs[0],
-  init: FetchArgs[1],
-): FetchReturn => {
-  if (shouldRunTauriFetch(input, init)) {
-    return await runTauriFetch(input, init);
-  } else {
-    return await runRealFetch(input, init);
-  }
-};
-
-// !!!! WE DO PATCH GLOBAL FETCH !!!!
-globalThis.fetch = patchFetch;
-
-//
 // STATE
 //
-let __internalLogger: Logger = consoleLogger();
+
 let __internalClerk: Clerk | null = null;
-let __internalWindowLabel = getCurrentWindow().label;
-
-//
-// COMMUNICATION WITH RUST
-//
-// OBS!!!
-// NEED TO STAY IN SYNC WITH RUST SIDE
-//
-
-type ClerkInitResponse = {
-  environment: EnvironmentJSON;
-  client: ClientJSON;
-  publishableKey: string;
-};
-
-const getInitArgs = () => invoke<ClerkInitResponse>("plugin:clerk|initialize");
-const getClientJWT = () =>
-  invoke<string | null>("plugin:clerk|get_client_authorization_header");
-const saveClientJWT = (header: string) =>
-  invoke("plugin:clerk|set_client_authorization_header", {
-    header,
-  });
-
-type ClerkAuthEventPayload = {
-  client: ClientJSON;
-  session: SessionJSON | null;
-  user: UserJSON | null;
-  organization: OrganizationJSON | null;
-};
-type ClerkAuthEvent = {
-  // Window name or "rust"
-  source: string;
-  payload: ClerkAuthEventPayload;
-};
-
-const CLERK_AUTH_EVENT_NAME = "plugin-clerk-auth-cb";
-
-listen<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, (event) => {
-  const authEvent = event.payload;
-  // TODO:
-  // * update local client state from the event
-  __internalLogger.info({ authEvent }, "Received auth event");
-}).catch(logError("Plugin:clerk: failed to initialize auth event listener"));
-
-const emitClerkAuthEvent = (payload: ClerkAuthEventPayload) => {
-  emit<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, {
-    source: __internalWindowLabel,
-    payload,
-  }).catch(logError("Plugin:clerk: failed to emit auth event"));
-};
 
 //
 // MAIN ENTRY POINT
@@ -245,10 +43,12 @@ const emitClerkAuthEvent = (payload: ClerkAuthEventPayload) => {
 
 export const init = async (
   initArgs: ClerkOptions,
-  logger?: Logger,
+  intLogger?: Logger,
 ): Promise<Clerk> => {
-  if (logger) {
-    setLogger(logger);
+  applyGlobalPatches();
+
+  if (intLogger) {
+    setLogger(intLogger);
   }
 
   const { client, environment, publishableKey } = await getInitArgs();
@@ -260,6 +60,7 @@ export const init = async (
   __internalClerk ??= new Clerk(publishableKey);
 
   if (isNewInstance) {
+    await initListener(__internalClerk);
     // is new instance, let's add listener
     __internalClerk.addListener(
       ({ client, session, user, organization }): void => {
@@ -306,7 +107,7 @@ export const init = async (
     // oxlint-disable-next-line typescript/no-explicit-any
     async (_: FapiRequestInit, response?: FapiResponse<any>): Promise<void> => {
       if (!response) {
-        __internalLogger.warn({}, "No response in Fapi call");
+        logger.warn({}, "No response in Fapi call");
         return;
       }
       const header = response.headers.get("authorization");
