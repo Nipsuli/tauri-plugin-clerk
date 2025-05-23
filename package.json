@@ -18,8 +18,13 @@
   ],
   "scripts": {
     "build": "rollup -c",
-    "prepublishOnly": "pnpm build",
-    "pretest": "pnpm build"
+    "prepublishOnly": "npm build",
+    "pretest": "npm build",
+    "format": "prettier --write \"guest-js/**/*.ts\"",
+    "checks:format": "prettier --check \"guest-js/**/*.ts\"",
+    "checks:types": "tsc --noEmit",
+    "checks:lint": "oxlint guest-js",
+    "checks": "run-p checks:*"
   },
   "dependencies": {
     "@clerk/clerk-js": "^5.67.2",
@@ -28,6 +33,9 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",
+    "npm-run-all": "^4.1.5",
+    "oxlint": "^0.16.11",
+    "prettier": "^3.5.3",
     "rollup": "^4.9.6",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3"

@@ -1,0 +1,22 @@
+{
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "style": "error",
+    "restriction": "error"
+  },
+  "rules": {
+    "typescript/consistent-type-definitions": ["error", "type"],
+    "eslint/max-lines-per-function": "off",
+    "eslint/max-nested-callbacks": "off",
+    "unicorn/filename-case": "off",
+    "eslint/max-depth": "off",
+    "unicorn/no-null": "off",
+    "oxc/no-async-await": "off",
+    "oxc/no-optional-chaining": "off",
+    "eslint/no-magic-numbers": "off",
+    "oxc/no-rest-spread-properties": "off"
+  }
+}
