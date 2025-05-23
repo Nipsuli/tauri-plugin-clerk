@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the get_client_authorization_header command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-client-authorization-header",
+          "markdownDescription": "Enables the get_client_authorization_header command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_client_authorization_header command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-client-authorization-header",
+          "markdownDescription": "Denies the get_client_authorization_header command without any pre-configured scope."
+        },
+        {
           "description": "Enables the initialize command without any pre-configured scope.",
           "type": "string",
           "const": "allow-initialize",
@@ -307,10 +319,28 @@
           "markdownDescription": "Denies the initialize command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-initialize`",
+          "description": "Enables the set_client_authorization_header command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-client-authorization-header",
+          "markdownDescription": "Enables the set_client_authorization_header command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_client_authorization_header command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-client-authorization-header",
+          "markdownDescription": "Denies the set_client_authorization_header command without any pre-configured scope."
+        },
+        {
+          "description": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-client`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-initialize`"
+          "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `allow-client`"
+        },
+        {
+          "description": "Enables use of Clerk in JS code",
+          "type": "string",
+          "const": "allow-client",
+          "markdownDescription": "Enables use of Clerk in JS code"
         }
       ]
     }

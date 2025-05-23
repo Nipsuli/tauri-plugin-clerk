@@ -16,7 +16,7 @@ clerk-fapi-rs = { git = "https://github.com/TheGrowthEngineeringCompany/clerk-fa
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1.41"
 parking_lot = "0.12"
-
+tauri-plugin-http = { version = "2.4", features = ['unsafe-headers'] }
 
 [build-dependencies]
 tauri-plugin = { version = "2.1.1", features = ["build"] }

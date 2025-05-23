@@ -111,7 +111,7 @@ pub struct ClerkPluginBuilder {
 impl ClerkPluginBuilder {
     /// Create a new builder instance
     pub fn new() -> Self {
-        Default::default()
+        ClerkPluginBuilder::default()
     }
 
     /// Set the Clerk publishable key
