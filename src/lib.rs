@@ -14,9 +14,11 @@ use tauri::{
     plugin::{Builder, TauriPlugin},
     AppHandle, Listener, Manager, Runtime,
 };
+use tauri_store::ClerkTauriStore;
 
 mod commands;
 mod events;
+mod tauri_store;
 
 //
 #[derive(Clone)]
@@ -129,6 +131,8 @@ pub struct ClerkPluginBuilder {
     pub domain: Option<String>,
     /// Store
     pub store: Option<Arc<dyn ClerkStateStore>>,
+    ///
+    pub with_tauri_store: bool,
 }
 
 impl ClerkPluginBuilder {
@@ -161,6 +165,12 @@ impl ClerkPluginBuilder {
         self
     }
 
+    /// Set the Tauri store
+    pub fn with_tauri_store(mut self) -> Self {
+        self.with_tauri_store = true;
+        self
+    }
+
     /// Build the Tauri plugin
     pub fn build<R: Runtime>(self) -> TauriPlugin<R> {
         let publishable_key = self.publishable_key.unwrap();
@@ -172,11 +182,18 @@ impl ClerkPluginBuilder {
                 commands::set_client_authorization_header
             ])
             .setup(move |app, _api| {
+                let mut store = self.store;
+                if store.is_none() && self.with_tauri_store {
+                    use tauri_plugin_store::StoreExt;
+                    let clerk_store = app.store("clerk-store")?;
+                    store = Some(Arc::new(ClerkTauriStore::new(clerk_store)));
+                }
+
                 let config = ClerkFapiConfiguration::new_with_store(
                     publishable_key.clone(),
                     self.proxy,
                     self.domain,
-                    self.store,
+                    store,
                     None,
                     ClientKind::NonBrowser,
                 )?;
