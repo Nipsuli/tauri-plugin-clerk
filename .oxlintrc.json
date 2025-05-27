@@ -27,6 +27,8 @@
     "unicorn/no-nested-ternary": "off",
     "eslint/yoda": "off",
     "eslint/max-lines": "off",
-    "eslint/no-negated-condition": "off"
+    "eslint/no-negated-condition": "off",
+    "unicorn/prefer-string-replace-all": "off",
+    "unicorn/prefer-global-this": "off"
   }
 }

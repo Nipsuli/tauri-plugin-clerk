@@ -7,7 +7,6 @@ import {
   ClerkProvider,
   SignInButton,
   SignOutButton,
-  useClerk,
   useUser,
 } from "@clerk/clerk-react";
 

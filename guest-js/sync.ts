@@ -63,23 +63,17 @@ export const initListener = async (clerk: Clerk) => {
   await listen<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, (event) => {
     const authEvent = event.payload;
     if (authEvent.source !== __internalWindowLabel) {
-      logger.info({ authEvent }, "Received auth event ELSEWHERE");
+      logger.debug({ authEvent }, "Plugin:clerk: received auth event");
       const oldClient = clerk.client;
       if (oldClient && shouldUpdate(oldClient, authEvent.payload.client)) {
         updateClerkClient(clerk, oldClient as Client, authEvent.payload.client);
-      } else {
-        // We probably do not need to do anything here as we've
-        // initialized the clerk here in JS land as well and it
-        // then has Client
       }
-    } else {
-      logger.info({ authEvent }, "Received auth event FROM SELF");
     }
   });
 };
 
 export const emitClerkAuthEvent = (payload: ClerkAuthEventPayload) => {
-  logger.info({ payload }, "Emiting auth event");
+  logger.debug({ payload }, "Plugin:clerk: emitting auth event");
   emit<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, {
     source: __internalWindowLabel,
     payload,

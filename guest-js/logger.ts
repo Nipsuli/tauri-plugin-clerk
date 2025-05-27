@@ -1,6 +1,7 @@
 export type LoggerParams = { [key: string]: unknown };
 
 export type Logger = {
+  debug: (params: LoggerParams, message: string) => void;
   info: (params: LoggerParams, message: string) => void;
   warn: (params: LoggerParams, message: string) => void;
   error: (params: LoggerParams & { error: Error }, message: string) => void;
@@ -10,6 +11,7 @@ export type Logger = {
  * Default logger to log to console
  */
 export const consoleLogger = (): Logger => ({
+  debug: (params, message) => console.debug(message, params), // oxlint-disable-line no-console
   info: (params, message) => console.info(message, params), // oxlint-disable-line no-console
   warn: (params, message) => console.warn(message, params), // oxlint-disable-line no-console
   error: ({ error, ...params }, message) =>
@@ -20,8 +22,9 @@ export const consoleLogger = (): Logger => ({
  * To mute internal logs
  */
 export const noopLogger = (): Logger => ({
+  debug: (_params, _message) => {}, // oxlint-disable-line no-empty-function
   info: (_params, _message) => {}, // oxlint-disable-line no-empty-function
-  warn: (_params, _message): void => {}, // oxlint-disable-line no-empty-function
+  warn: (_params, _message) => {}, // oxlint-disable-line no-empty-function
   error: (_params, _message) => {}, // oxlint-disable-line no-empty-function
 });
 

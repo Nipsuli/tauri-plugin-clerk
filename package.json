@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "dev:js": "tsdown --watch",
+    "dev:js": "tsdown --watch ./guest-js",
     "prepublishOnly": "npm build",
     "pretest": "npm build",
     "format": "prettier --write \"guest-js/**/*.ts\"",

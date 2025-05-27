@@ -7,6 +7,7 @@ use events::{
     emit_clerk_auth_event, ClerkAuthEvent, ClerkAuthEventPayload, CLERK_AUTH_EVENT_NAME,
     RUST_EVENT_SOURCE,
 };
+use log::debug;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tauri::{
@@ -99,12 +100,10 @@ impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
                 let payload = event.payload();
                 if let Ok(payload) = serde_json::from_str::<ClerkAuthEvent>(payload) {
                     if payload.source != RUST_EVENT_SOURCE {
-                        println!("Received CLIENT ClerkAuthEvent: {:?}", payload);
+                        debug!("Received ClerkAuthEvent: {payload:?}");
                         let _ = app_handle
                             .clerk()
                             .set_client(payload.payload.client.clone());
-                    } else {
-                        println!("Received SELF ClerkAuthEvent: {:?}", payload);
                     }
                 }
             });
@@ -164,10 +163,7 @@ impl ClerkPluginBuilder {
 
     /// Build the Tauri plugin
     pub fn build<R: Runtime>(self) -> TauriPlugin<R> {
-        let publishable_key = self
-            .publishable_key
-            .or_else(|| std::env::var("CLERK_PUBLISHABLE_KEY").ok())
-            .unwrap();
+        let publishable_key = self.publishable_key.unwrap();
 
         Builder::<R>::new("clerk")
             .invoke_handler(tauri::generate_handler![

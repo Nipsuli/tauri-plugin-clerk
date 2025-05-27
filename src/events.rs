@@ -1,6 +1,7 @@
 use clerk_fapi_rs::models::{
     ClientPeriodClient, ClientPeriodOrganization, ClientPeriodSession, ClientPeriodUser,
 };
+use log::debug;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Runtime};
 
@@ -23,6 +24,8 @@ pub struct ClerkAuthEvent {
 }
 
 pub fn emit_clerk_auth_event<R: Runtime>(app: AppHandle<R>, payload: ClerkAuthEventPayload) {
+    debug!("Emiting auth event: {payload:?}");
+
     if let Err(e) = app.emit(
         CLERK_AUTH_EVENT_NAME,
         ClerkAuthEvent {

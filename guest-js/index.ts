@@ -1,10 +1,7 @@
 import type {
   ClerkOptions,
-  ClientJSON,
   ClientJSONSnapshot,
   EnvironmentJSONSnapshot,
-  SessionJSON,
-  UserJSON,
 } from "@clerk/types";
 import type {
   FapiRequestInit,
@@ -21,14 +18,20 @@ import {
   saveClientJWT,
 } from "./sync";
 import { applyGlobalPatches } from "./patching";
+import {
+  clerkClientToClientJSON,
+  clerkOrganizationToOrganizationJSON,
+  clerkSessionToSessionJSON,
+  clerkUserToUserJSON,
+} from "./clerk-utils";
+import pkg from "../package.json";
 
 export type { Logger, LoggerParams } from "./logger";
 export { consoleLogger, noopLogger } from "./logger";
 
-// TODO: read from package.json
 const sdkMetadata = {
-  name: "tauri-plugin-clerk",
-  version: "0.1.0",
+  name: pkg.name,
+  version: pkg.version,
 };
 
 //
@@ -64,17 +67,14 @@ export const init = async (
     // is new instance, let's add listener
     __internalClerk.addListener(
       ({ client, session, user, organization }): void => {
-        // We do bit of casting, the XxxJSONSnapshot matches the XxxJSON forma
-        // it's bit more relaxed, but has the same shape and types
-        console.log(client);
-
-        // emitClerkAuthEvent({
-        //   client: client.__internal_toSnapshot() as ClientJSON,
-        //   session: (session?.__internal_toSnapshot() ??
-        //     null) as SessionJSON | null,
-        //   user: (user?.__internal_toSnapshot() ?? null) as UserJSON | null,
-        //   organization: organization?.__internal_toSnapshot() ?? null,
-        // });
+        emitClerkAuthEvent({
+          client: clerkClientToClientJSON(client),
+          session: session ? clerkSessionToSessionJSON(session) : null,
+          user: user ? clerkUserToUserJSON(user) : null,
+          organization: organization
+            ? clerkOrganizationToOrganizationJSON(organization)
+            : null,
+        });
       },
     );
   }
