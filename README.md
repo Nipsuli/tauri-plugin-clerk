@@ -1,6 +1,6 @@
 # Tauri Plugin clerk
 
-Status: WIP, basic stuff works
+Status: WIP, basic stuff works, see `examples/react-example`
 
 Keeps the Client state in sync with rust and js allowing actions on
 either side.
