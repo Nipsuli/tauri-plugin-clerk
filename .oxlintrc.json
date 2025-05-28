@@ -1,4 +1,5 @@
 {
+  "ignorePatterns": ["dist-js/**"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
