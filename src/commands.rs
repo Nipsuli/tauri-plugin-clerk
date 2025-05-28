@@ -39,10 +39,8 @@ pub(crate) struct ClerkInitResponse {
 #[tauri::command]
 pub(crate) async fn get_client_authorization_header<R: Runtime>(
     app: AppHandle<R>,
-) -> Result<Option<String>, String> {
-    app.clerk()
-        .get_client_authorization_header()
-        .map_err(|e| e.to_string())
+) -> Option<String> {
+    app.clerk().get_client_authorization_header()
 }
 
 /// Authorization header read in __unstable__onAfterResponse
@@ -50,10 +48,8 @@ pub(crate) async fn get_client_authorization_header<R: Runtime>(
 pub(crate) async fn set_client_authorization_header<R: Runtime>(
     app: AppHandle<R>,
     header: Option<String>,
-) -> Result<(), String> {
-    app.clerk()
-        .set_client_authorization_header(header)
-        .map_err(|e| e.to_string())
+) -> () {
+    app.clerk().set_client_authorization_header(header)
 }
 
 #[tauri::command]
