@@ -54,10 +54,7 @@ const initListener = async (clerk) => {
 		const authEvent = event.payload;
 		if (authEvent.source !== __internalWindowLabel) {
 			logger.debug({ authEvent }, "Plugin:clerk: received auth event");
-			if (shouldUpdate(clerk.client, authEvent.payload.client)) {
-				logger.debug({ authEvent }, "Plugin:clerk: refreshing session");
-				clerk.__internal_reloadInitialResources();
-			}
+			if (shouldUpdate(clerk.client, authEvent.payload.client)) logger.debug({}, "Plugin:clerk: refreshing session");
 		}
 	});
 };

@@ -67,11 +67,10 @@ export const initListener = async (clerk: Clerk) => {
     if (authEvent.source !== __internalWindowLabel) {
       logger.debug({ authEvent }, "Plugin:clerk: received auth event");
       if (shouldUpdate(clerk.client, authEvent.payload.client)) {
-        logger.debug({ authEvent }, "Plugin:clerk: refreshing session");
-        // need to figure out if we could just update the client
-        // on the Clerk object, but there are lot of internal
-        // things that do not work fine, so just pulling from api
-        clerk.__internal_reloadInitialResources();
+        logger.debug({}, "Plugin:clerk: refreshing session");
+        // TODO: figure out how to sync Clerk state from
+        // rust side. For now the JS side is the one driving
+        // this story
       }
     }
   });
