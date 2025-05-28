@@ -173,8 +173,6 @@ impl ClerkPluginBuilder {
 
     /// Build the Tauri plugin
     pub fn build<R: Runtime>(self) -> TauriPlugin<R> {
-        let publishable_key = self.publishable_key.unwrap();
-
         Builder::<R>::new("clerk")
             .invoke_handler(tauri::generate_handler![
                 commands::initialize,
@@ -182,6 +180,10 @@ impl ClerkPluginBuilder {
                 commands::set_client_authorization_header
             ])
             .setup(move |app, _api| {
+                let publishable_key = self
+                    .publishable_key
+                    .ok_or("Clerk: Missing publishable_key".to_string())?;
+
                 let mut store = self.store;
                 if store.is_none() && self.with_tauri_store {
                     use tauri_plugin_store::StoreExt;

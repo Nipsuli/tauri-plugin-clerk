@@ -1,6 +1,5 @@
 import type {
   ClientJSON,
-  ClientJSONSnapshot,
   ClientResource,
   EnvironmentJSON,
   OrganizationJSON,
@@ -41,22 +40,25 @@ type ClerkAuthEvent = {
 
 const CLERK_AUTH_EVENT_NAME = "plugin-clerk-auth-cb";
 
-const shouldUpdate = (_oldClient: ClientResource, _newClient: ClientJSON) => {
-  // TODO figure out best way to check if the Client has changed
-  return true;
-};
-
-// We know the internal client field in clerk-js has the fromJSON method
-type Client = ClientResource & {
-  fromJSON: (data: ClientJSON | ClientJSONSnapshot | null) => ClientResource;
-};
-
-const updateClerkClient = (
-  clerk: Clerk,
-  oldClient: Client,
+const shouldUpdate = (
+  oldClient: ClientResource | undefined,
   newClient: ClientJSON,
 ) => {
-  clerk.updateClient(oldClient.fromJSON(newClient));
+  if (!oldClient) return true;
+  if (oldClient.id !== newClient.id) return true;
+  if (oldClient.lastActiveSessionId !== newClient.last_active_session_id)
+    return true;
+
+  const oldSessionIds = [...oldClient.sessions.map((s) => s.id)].sort();
+  const newSessionIds = [...newClient.sessions.map((s) => s.id)].sort();
+
+  if (oldSessionIds.length !== newSessionIds.length) return true;
+
+  for (let i = 0; i < oldSessionIds.length; i++) {
+    if (oldSessionIds[i] !== newSessionIds[i]) return true;
+  }
+
+  return false;
 };
 
 export const initListener = async (clerk: Clerk) => {
@@ -64,9 +66,12 @@ export const initListener = async (clerk: Clerk) => {
     const authEvent = event.payload;
     if (authEvent.source !== __internalWindowLabel) {
       logger.debug({ authEvent }, "Plugin:clerk: received auth event");
-      const oldClient = clerk.client;
-      if (oldClient && shouldUpdate(oldClient, authEvent.payload.client)) {
-        updateClerkClient(clerk, oldClient as Client, authEvent.payload.client);
+      if (shouldUpdate(clerk.client, authEvent.payload.client)) {
+        logger.debug({ authEvent }, "Plugin:clerk: refreshing session");
+        // need to figure out if we could just update the client
+        // on the Clerk object, but there are lot of internal
+        // things that do not work fine, so just pulling from api
+        clerk.__internal_reloadInitialResources();
       }
     }
   });
