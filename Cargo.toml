@@ -12,7 +12,7 @@ links = "tauri-plugin-clerk"
 tauri = { version = "2.4.1" }
 serde = "1.0"
 thiserror = "2"
-clerk-fapi-rs = { git = "https://github.com/TheGrowthEngineeringCompany/clerk-fapi-rs", rev = "b2bd8d527a0a46f51c29c7915cffa580135e870c" }
+clerk-fapi-rs = { git = "https://github.com/TheGrowthEngineeringCompany/clerk-fapi-rs", rev = "2d75c46e9ef8508e228075e4e1079406382bc2b6" }
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1.41"
 parking_lot = "0.12"
