@@ -15,23 +15,30 @@ import { logError, logger } from "./logger";
 
 const __internalWindowLabel = getCurrentWindow().label;
 
-//
-// OBS!!!
-// NEED TO STAY IN SYNC WITH RUST SIDE
-//
-
+/**
+ * Need to stay in sync with ClerkInitResponse in
+ * src/commands.rs
+ */
 type ClerkInitResponse = {
   environment: EnvironmentJSON;
   client: ClientJSON;
   publishableKey: string;
 };
 
+/**
+ * Need to stay in sync with ClerkAuthEventPayload in
+ * src/events.rs
+ */
 type ClerkAuthEventPayload = {
   client: ClientJSON;
   session: SessionJSON | null;
   user: UserJSON | null;
   organization: OrganizationJSON | null;
 };
+/**
+ * Need to stay in sync with ClerkAuthEvent in
+ * src/events.rs
+ */
 type ClerkAuthEvent = {
   // Window name or "rust"
   source: string;
@@ -44,24 +51,37 @@ const shouldUpdate = (
   oldClient: ClientResource | undefined,
   newClient: ClientJSON,
 ) => {
-  if (!oldClient) return true;
-  if (oldClient.id !== newClient.id) return true;
-  if (oldClient.lastActiveSessionId !== newClient.last_active_session_id)
+  if (!oldClient) {
     return true;
+  }
+  if (oldClient.id !== newClient.id) {
+    return true;
+  }
+  if (oldClient.lastActiveSessionId !== newClient.last_active_session_id) {
+    return true;
+  }
 
-  const oldSessionIds = [...oldClient.sessions.map((s) => s.id)].sort();
-  const newSessionIds = [...newClient.sessions.map((s) => s.id)].sort();
+  const oldSessionIds = oldClient.sessions
+    .map((session) => session.id)
+    .toSorted();
+  const newSessionIds = newClient.sessions
+    .map((session) => session.id)
+    .toSorted();
 
-  if (oldSessionIds.length !== newSessionIds.length) return true;
+  if (oldSessionIds.length !== newSessionIds.length) {
+    return true;
+  }
 
   for (let i = 0; i < oldSessionIds.length; i++) {
-    if (oldSessionIds[i] !== newSessionIds[i]) return true;
+    if (oldSessionIds[i] !== newSessionIds[i]) {
+      return true;
+    }
   }
 
   return false;
 };
 
-export const initListener = async (clerk: Clerk) => {
+export const initListener = async (clerk: Clerk): Promise<void> => {
   await listen<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, (event) => {
     const authEvent = event.payload;
     if (authEvent.source !== __internalWindowLabel) {
@@ -76,7 +96,7 @@ export const initListener = async (clerk: Clerk) => {
   });
 };
 
-export const emitClerkAuthEvent = (payload: ClerkAuthEventPayload) => {
+export const emitClerkAuthEvent = (payload: ClerkAuthEventPayload): void => {
   logger.debug({ payload }, "Plugin:clerk: emitting auth event");
   emit<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, {
     source: __internalWindowLabel,
@@ -84,13 +104,14 @@ export const emitClerkAuthEvent = (payload: ClerkAuthEventPayload) => {
   }).catch(logError("Plugin:clerk: failed to emit auth event"));
 };
 
-export const getInitArgs = () =>
+export const getInitArgs = (): Promise<ClerkInitResponse> =>
   invoke<ClerkInitResponse>("plugin:clerk|initialize");
 
-export const getClientJWT = () =>
+export const getClientJWT = (): Promise<string | null> =>
   invoke<string | null>("plugin:clerk|get_client_authorization_header");
 
-export const saveClientJWT = (header: string) =>
-  invoke("plugin:clerk|set_client_authorization_header", {
+export const saveClientJWT = async (header: string): Promise<void> => {
+  await invoke("plugin:clerk|set_client_authorization_header", {
     header,
   });
+};

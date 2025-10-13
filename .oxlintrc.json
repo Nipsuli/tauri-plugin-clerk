@@ -30,6 +30,10 @@
     "eslint/max-lines": "off",
     "eslint/no-negated-condition": "off",
     "unicorn/prefer-string-replace-all": "off",
-    "unicorn/prefer-global-this": "off"
+    "unicorn/prefer-global-this": "off",
+    "eslint/id-length": "off",
+    "eslint/no-plusplus": "off",
+    "eslint/no-undefined": "off",
+    "unicorn/prefer-query-selector": "off"
   }
 }

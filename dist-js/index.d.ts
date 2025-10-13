@@ -2,9 +2,7 @@ import { Clerk } from "@clerk/clerk-js";
 import { ClerkOptions } from "@clerk/types";
 
 //#region guest-js/logger.d.ts
-type LoggerParams = {
-  [key: string]: unknown;
-};
+type LoggerParams = Record<string, unknown>;
 type Logger = {
   debug: (params: LoggerParams, message: string) => void;
   info: (params: LoggerParams, message: string) => void;

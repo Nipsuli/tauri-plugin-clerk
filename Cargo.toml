@@ -1,10 +1,11 @@
 [package]
 name = "tauri-plugin-clerk"
 version = "0.1.0"
-authors = ["You"]
-description = ""
+authors = ["@Nipsuli"]
+homepage = "https://github.com/Nipsuli/tauri-plugin-clerk/"
+repository = "https://github.com/Nipsuli/tauri-plugin-clerk/"
+description = "An unofficial Tauri SDK for the Clerk REST Frontend API"
 edition = "2021"
-rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
 links = "tauri-plugin-clerk"
 
@@ -12,7 +13,7 @@ links = "tauri-plugin-clerk"
 tauri = { version = "2.4.1" }
 serde = "1.0"
 thiserror = "2"
-clerk-fapi-rs = { git = "https://github.com/TheGrowthEngineeringCompany/clerk-fapi-rs", rev = "2d75c46e9ef8508e228075e4e1079406382bc2b6" }
+clerk-fapi-rs = { git = "https://github.com/Nipsuli/clerk-fapi-rs", rev = "dcefa947ad1b032f0dac824980628f6afc1d935c" }
 tokio = { version = "1", features = ["sync"] }
 tracing = "0.1.41"
 parking_lot = "0.12"

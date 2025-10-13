@@ -86,7 +86,7 @@ const strFromCamelToSnake = (str: string): string => {
 };
 
 const camelToSnake = <T extends object>(obj: T): CamelToSnake<T> => {
-  const res: { [key: string]: unknown } = {};
+  const res: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     res[strFromCamelToSnake(key)] = value;
   }
@@ -126,6 +126,7 @@ export const clerkClientToClientJSON = (
   sign_in: client.signIn ? clerkSignInToSignInJSON(client.signIn) : null,
   captcha_bypass: client.captchaBypass,
   last_active_session_id: client.lastActiveSessionId,
+  last_authentication_strategy: client.lastAuthenticationStrategy,
   cookie_expires_at: client.cookieExpiresAt
     ? client.cookieExpiresAt.getTime() / 1000
     : null,
@@ -309,6 +310,7 @@ const clerkOrganizationMembershipToOrganizationMembershipJSON = (
     organizationMembership.publicUserData,
   ),
   role: organizationMembership.role,
+  role_name: organizationMembership.roleName,
   created_at: organizationMembership.createdAt.getTime() / 1000,
   updated_at: organizationMembership.updatedAt.getTime() / 1000,
 });
@@ -352,8 +354,9 @@ export const clerkUserToUserJSON = (user: UserResource): UserJSON => ({
   create_organization_enabled: user.createOrganizationEnabled,
   create_organizations_limit: user.createOrganizationsLimit,
   delete_self_enabled: user.deleteSelfEnabled,
-  // TODO: figure out where to parse
-  legal_accepted_at: null,
+  legal_accepted_at: user.legalAcceptedAt
+    ? user.legalAcceptedAt.getTime() / 1000
+    : null,
   updated_at: user.updatedAt ? user.updatedAt.getTime() / 1000 : 0,
   created_at: user.createdAt ? user.createdAt.getTime() / 1000 : 0,
 });

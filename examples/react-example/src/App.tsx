@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { type JSX, use, Suspense } from "react";
 import reactLogo from "./assets/react.svg";
 import clerkLogo from "./assets/clerk-dark.svg";
-// import { invoke } from "@tauri-apps/api/core";
 
 import {
   ClerkProvider,
@@ -38,7 +37,8 @@ const SigninOrShowUser = () => {
   );
 };
 
-const AppLoaded = ({ clerk }: { clerk: Clerk }) => {
+const AppLoaded = ({ clerkPromise }: { clerkPromise: Promise<Clerk> }) => {
+  const clerk = use(clerkPromise);
   return (
     <ClerkProvider publishableKey={clerk.publishableKey} Clerk={clerk}>
       <>
@@ -65,23 +65,16 @@ const AppLoaded = ({ clerk }: { clerk: Clerk }) => {
   );
 };
 
-const LoadingClerk = () => {
-  return <div>Loading clerk...</div>;
-};
+const LoadingClerk = () => <div>Loading clerk...</div>;
 
-const App = () => {
-  const [clerk, setClerk] = useState<Clerk | null>(null);
-
-  useEffect(() => {
-    // avoid double loading in dev
-    const timeout = setTimeout(() => init({}).then(setClerk), 16);
-    return () => clearTimeout(timeout);
-  }, []);
-
+const App = (): JSX.Element => {
+  const clerkPromise = init({});
   return (
     <main className="container">
       <h1>Welcome to Tauri + React + Clerk</h1>
-      {clerk ? <AppLoaded clerk={clerk} /> : <LoadingClerk />}
+      <Suspense fallback={<LoadingClerk />}>
+        <AppLoaded clerkPromise={clerkPromise} />
+      </Suspense>
     </main>
   );
 };

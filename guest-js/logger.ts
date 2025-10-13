@@ -1,4 +1,4 @@
-export type LoggerParams = { [key: string]: unknown };
+export type LoggerParams = Record<string, unknown>;
 
 export type Logger = {
   debug: (params: LoggerParams, message: string) => void;
@@ -40,8 +40,9 @@ const toError = (error: unknown): Error => {
 
 export let logger = consoleLogger();
 
-export const logError = (message: string) => (error: unknown) =>
-  logger.error({ error: toError(error) }, message);
+export const logError: (message: string) => (error: unknown) => void =
+  (message: string) => (error: unknown) =>
+    logger.error({ error: toError(error) }, message);
 
 export const setLogger = (newLogger: Logger): void => {
   logger = newLogger;

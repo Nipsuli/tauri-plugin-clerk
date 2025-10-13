@@ -43,8 +43,8 @@ const shouldUpdate = (oldClient, newClient) => {
 	if (!oldClient) return true;
 	if (oldClient.id !== newClient.id) return true;
 	if (oldClient.lastActiveSessionId !== newClient.last_active_session_id) return true;
-	const oldSessionIds = [...oldClient.sessions.map((s) => s.id)].sort();
-	const newSessionIds = [...newClient.sessions.map((s) => s.id)].sort();
+	const oldSessionIds = oldClient.sessions.map((session) => session.id).toSorted();
+	const newSessionIds = newClient.sessions.map((session) => session.id).toSorted();
 	if (oldSessionIds.length !== newSessionIds.length) return true;
 	for (let i = 0; i < oldSessionIds.length; i++) if (oldSessionIds[i] !== newSessionIds[i]) return true;
 	return false;
@@ -67,7 +67,9 @@ const emitClerkAuthEvent = (payload) => {
 };
 const getInitArgs = () => invoke("plugin:clerk|initialize");
 const getClientJWT = () => invoke("plugin:clerk|get_client_authorization_header");
-const saveClientJWT = (header) => invoke("plugin:clerk|set_client_authorization_header", { header });
+const saveClientJWT = async (header) => {
+	await invoke("plugin:clerk|set_client_authorization_header", { header });
+};
 
 //#endregion
 //#region guest-js/patching.ts
@@ -195,6 +197,7 @@ const clerkClientToClientJSON = (client) => ({
 	sign_in: client.signIn ? clerkSignInToSignInJSON(client.signIn) : null,
 	captcha_bypass: client.captchaBypass,
 	last_active_session_id: client.lastActiveSessionId,
+	last_authentication_strategy: client.lastAuthenticationStrategy,
 	cookie_expires_at: client.cookieExpiresAt ? client.cookieExpiresAt.getTime() / 1e3 : null,
 	created_at: client.createdAt ? client.createdAt.getTime() / 1e3 : 0,
 	updated_at: client.updatedAt ? client.updatedAt.getTime() / 1e3 : 0
@@ -325,6 +328,7 @@ const clerkOrganizationMembershipToOrganizationMembershipJSON = (organizationMem
 	public_metadata: organizationMembership.publicMetadata,
 	public_user_data: clerkPublicUserDataToPublicUserDataJSON(organizationMembership.publicUserData),
 	role: organizationMembership.role,
+	role_name: organizationMembership.roleName,
 	created_at: organizationMembership.createdAt.getTime() / 1e3,
 	updated_at: organizationMembership.updatedAt.getTime() / 1e3
 });
@@ -359,7 +363,7 @@ const clerkUserToUserJSON = (user) => ({
 	create_organization_enabled: user.createOrganizationEnabled,
 	create_organizations_limit: user.createOrganizationsLimit,
 	delete_self_enabled: user.deleteSelfEnabled,
-	legal_accepted_at: null,
+	legal_accepted_at: user.legalAcceptedAt ? user.legalAcceptedAt.getTime() / 1e3 : null,
 	updated_at: user.updatedAt ? user.updatedAt.getTime() / 1e3 : 0,
 	created_at: user.createdAt ? user.createdAt.getTime() / 1e3 : 0
 });
@@ -406,11 +410,11 @@ var scripts = {
 	"checks": "run-p checks:*"
 };
 var dependencies = {
-	"@clerk/clerk-js": "^5.67.2",
-	"@clerk/types": "^4.59.0",
+	"@clerk/clerk-js": "^5.99.0",
+	"@clerk/types": "^4.92.0",
 	"@tauri-apps/api": ">=2.5.0",
 	"@tauri-apps/plugin-http": "^2.4.4",
-	"zod": "^3.25.23"
+	"zod": ">=4.0.0"
 };
 var devDependencies = {
 	"npm-run-all": "^4.1.5",
