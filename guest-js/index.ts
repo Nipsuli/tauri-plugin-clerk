@@ -24,14 +24,14 @@ import {
   clerkSessionToSessionJSON,
   clerkUserToUserJSON,
 } from "./clerk-utils";
-import pkg from "../package.json";
+import { name, version } from "../package.json";
 
 export type { Logger, LoggerParams } from "./logger";
 export { consoleLogger, noopLogger } from "./logger";
 
 const sdkMetadata = {
-  name: pkg.name,
-  version: pkg.version,
+  name,
+  version,
 };
 
 //

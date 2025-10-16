@@ -153,7 +153,8 @@ const clerkSignUpToSignUpJSON = (signUp) => ({
 	created_user_id: signUp.createdUserId,
 	abandon_at: signUp.abandonAt,
 	legal_accepted_at: signUp.legalAcceptedAt,
-	verifications: null
+	verifications: null,
+	locale: signUp.locale
 });
 const strFromCamelToSnake = (str) => {
 	if (!str) return "";
@@ -280,7 +281,8 @@ const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (enter
 	provider: enterpriseAccountConnection.provider,
 	sync_user_attributes: enterpriseAccountConnection.syncUserAttributes,
 	created_at: 0,
-	updated_at: 0
+	updated_at: 0,
+	enterprise_connection_id: enterpriseAccountConnection.enterpriseConnectionId
 });
 const clerkEnterpriseAccountToEnterpriseAccountJSON = (enterpriseAccount) => ({
 	object: "enterprise_account",
@@ -294,7 +296,9 @@ const clerkEnterpriseAccountToEnterpriseAccountJSON = (enterpriseAccount) => ({
 	provider: enterpriseAccount.provider,
 	provider_user_id: enterpriseAccount.providerUserId ?? "",
 	public_metadata: enterpriseAccount.publicMetadata ?? {},
-	verification: null
+	verification: null,
+	enterprise_connection_id: enterpriseAccount.enterpriseConnectionId,
+	last_authenticated_at: enterpriseAccount.lastAuthenticatedAt ? enterpriseAccount.lastAuthenticatedAt.getTime() / 1e3 : null
 });
 const clerkPasskeyToPasskeyJSON = (passkey) => ({
 	object: "passkey",
@@ -383,64 +387,12 @@ const clerkOrganizationToOrganizationJSON = (organization) => ({
 //#region package.json
 var name = "tauri-plugin-clerk";
 var version = "0.1.0";
-var author = "@Nipsuli";
-var description = "";
-var type = "module";
-var types = "./dist-js/index.d.ts";
-var main = "./dist-js/index.js";
-var module = "./dist-js/index.js";
-var exports = {
-	"types": "./dist-js/index.d.ts",
-	"import": "./dist-js/index.js"
-};
-var files = ["dist-js", "README.md"];
-var scripts = {
-	"build": "tsdown",
-	"dev:js": "tsdown --watch ./guest-js",
-	"prepublishOnly": "npm build",
-	"pretest": "npm build",
-	"format": "prettier --write \"guest-js/**/*.ts\"",
-	"checks:format": "prettier --check \"guest-js/**/*.ts\"",
-	"checks:types": "tsc --noEmit",
-	"checks:lint": "oxlint guest-js",
-	"checks": "run-p checks:*"
-};
-var dependencies = {
-	"@clerk/clerk-js": "^5.99.0",
-	"@clerk/types": "^4.92.0",
-	"@tauri-apps/api": ">=2.5.0",
-	"@tauri-apps/plugin-http": "^2.4.4",
-	"zod": ">=4.0.0"
-};
-var devDependencies = {
-	"npm-run-all": "^4.1.5",
-	"oxlint": "^1.23.0",
-	"prettier": "^3.6.2",
-	"tsdown": "^0.15.7",
-	"tslib": "^2.8.1",
-	"typescript": "^5.9.3"
-};
-var package_default = {
-	name,
-	version,
-	author,
-	description,
-	type,
-	types,
-	main,
-	module,
-	exports,
-	files,
-	scripts,
-	dependencies,
-	devDependencies
-};
 
 //#endregion
 //#region guest-js/index.ts
 const sdkMetadata = {
-	name: package_default.name,
-	version: package_default.version
+	name,
+	version
 };
 let __internalClerk = null;
 const initClerk = async (initArgs, intLogger) => {
