@@ -9,6 +9,7 @@ keywords = ["clerk", "tauri", "auth", "frontend"]
 edition = "2021"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
 links = "tauri-plugin-clerk"
+license = "MIT"
 
 [dependencies]
 tauri = { version = "2.4.1" }
