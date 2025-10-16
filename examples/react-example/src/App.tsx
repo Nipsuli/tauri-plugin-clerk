@@ -12,7 +12,7 @@ import {
 import "./App.css";
 
 import type { Clerk } from "@clerk/clerk-js";
-import { init } from "tauri-plugin-clerk";
+import { initClerk } from "tauri-plugin-clerk";
 
 const SigninOrShowUser = () => {
   const { user, isLoaded } = useUser();
@@ -68,7 +68,7 @@ const AppLoaded = ({ clerkPromise }: { clerkPromise: Promise<Clerk> }) => {
 const LoadingClerk = () => <div>Loading clerk...</div>;
 
 const App = (): JSX.Element => {
-  const clerkPromise = init({});
+  const clerkPromise = initClerk();
   return (
     <main className="container">
       <h1>Welcome to Tauri + React + Clerk</h1>

@@ -84,32 +84,29 @@ const RequestInitSchema = z.object({ clientConfig: z.object({
 	proxy: z.any()
 }) }).strict();
 const urlForRequestInput = (input) => typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url);
-const runTauriFetch = async (input, init$1) => {
-	const req = new Request(input, init$1);
-	const res = await fetch(req);
-	return res;
+const runTauriFetch = async (input, init) => {
+	return await fetch(new Request(input, init));
 };
-const shouldRunTauriFetch = (input, init$1) => {
-	const initHeaders = init$1?.headers;
+const shouldRunTauriFetch = (input, init) => {
+	const initHeaders = init?.headers;
 	if (initHeaders) if (initHeaders instanceof Headers) return initHeaders.has("x-tauri-fetch");
 	else if (Array.isArray(initHeaders)) return initHeaders.some((h) => h[0] === "x-tauri-fetch");
 	else return !!initHeaders["x-tauri-fetch"];
 	if (input instanceof Request) return input.headers.has("x-tauri-fetch");
 	return false;
 };
-const runRealFetch = async (input, init$1) => {
+const runRealFetch = async (input, init) => {
 	const url = urlForRequestInput(input);
-	const path = decodeURIComponent(url.pathname);
-	const shouldInjectHeaders = path === "/plugin:http|fetch";
-	let initToPass = init$1;
-	if (shouldInjectHeaders && typeof init$1?.body === "string") {
-		const rawBody = JSON.parse(init$1.body);
+	const shouldInjectHeaders = decodeURIComponent(url.pathname) === "/plugin:http|fetch";
+	let initToPass = init;
+	if (shouldInjectHeaders && typeof init?.body === "string") {
+		const rawBody = JSON.parse(init.body);
 		const body = RequestInitSchema.parse(rawBody);
 		const headers = [...body.clientConfig.headers, ["User-Agent", window.navigator.userAgent]];
 		if (body.clientConfig.headers.some((h) => h[0] === "x-no-origin")) headers.push(["Origin", ""]);
 		else headers.push(["Origin", window.location.origin]);
 		initToPass = {
-			...init$1,
+			...init,
 			body: JSON.stringify({
 				...body,
 				clientConfig: {
@@ -119,12 +116,11 @@ const runRealFetch = async (input, init$1) => {
 			})
 		};
 	}
-	const res = await realFetch(input, initToPass);
-	return res;
+	return await realFetch(input, initToPass);
 };
-const patchFetch = async (input, init$1) => {
-	if (shouldRunTauriFetch(input, init$1)) return await runTauriFetch(input, init$1);
-	else return await runRealFetch(input, init$1);
+const patchFetch = async (input, init) => {
+	if (shouldRunTauriFetch(input, init)) return await runTauriFetch(input, init);
+	else return await runRealFetch(input, init);
 };
 let __internalIsPatched = false;
 const applyGlobalPatches = () => {
@@ -418,11 +414,11 @@ var dependencies = {
 };
 var devDependencies = {
 	"npm-run-all": "^4.1.5",
-	"oxlint": "^0.16.11",
-	"prettier": "^3.5.3",
-	"tsdown": "^0.12.2",
-	"tslib": "^2.6.2",
-	"typescript": "^5.3.3"
+	"oxlint": "^1.23.0",
+	"prettier": "^3.6.2",
+	"tsdown": "^0.15.7",
+	"tslib": "^2.8.1",
+	"typescript": "^5.9.3"
 };
 var package_default = {
 	name,
@@ -447,7 +443,7 @@ const sdkMetadata = {
 	version: package_default.version
 };
 let __internalClerk = null;
-const init = async (initArgs, intLogger) => {
+const initClerk = async (initArgs, intLogger) => {
 	applyGlobalPatches();
 	if (intLogger) setLogger(intLogger);
 	const { client, environment, publishableKey } = await getInitArgs();
@@ -495,4 +491,4 @@ const init = async (initArgs, intLogger) => {
 };
 
 //#endregion
-export { consoleLogger, init, noopLogger };
+export { consoleLogger, initClerk, noopLogger };

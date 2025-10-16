@@ -53,8 +53,8 @@ let __internalClerk: HeadlessBrowserClerk | null = null;
 // MAIN ENTRY POINT
 //
 
-export const init = async (
-  initArgs: ClerkOptions,
+export const initClerk = async (
+  initArgs?: ClerkOptions,
   intLogger?: Logger,
 ): Promise<Clerk> => {
   applyGlobalPatches();
