@@ -1,6 +1,6 @@
 use clerk_fapi_rs::{
     configuration::{ClientKind, Store as ClerkStateStore},
-    models::{ClientPeriodClient, ClientPeriodOrganization, ClientPeriodSession, ClientPeriodUser},
+    models::{ClientClient, ClientOrganization, ClientSession, ClientUser},
     Clerk, ClerkFapiConfiguration,
 };
 use events::{
@@ -36,16 +36,16 @@ pub trait ClerkExt<R: Runtime> {
     fn clerk_store(&self) -> ClerkStoreInternal;
     /// Get the Clerk instance
     fn clerk(&self) -> Clerk;
-    ///
+    /// Init method, idempotent
     async fn ensure_clerk_initialized(&self) -> Result<(), String>;
 }
 
 fn clerk_auth_cb<R: Runtime>(
     app: AppHandle<R>,
-    client: ClientPeriodClient,
-    session: Option<ClientPeriodSession>,
-    user: Option<ClientPeriodUser>,
-    organization: Option<ClientPeriodOrganization>,
+    client: ClientClient,
+    session: Option<ClientSession>,
+    user: Option<ClientUser>,
+    organization: Option<ClientOrganization>,
 ) {
     emit_clerk_auth_event(
         app,
@@ -84,11 +84,9 @@ impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
 
         let clerk = self.clerk();
         if !clerk.loaded() {
-            // Prefer cached resources, In case one uses persisted ClerkStore
-            // we can load the resources from cache to support offline loading
-            // TODO: in the clerk fapi rs add reload mechanism, so here in case
-            // we ended up loading from cache we can trigger background task
-            // to refresh the cache
+            // Clerk load will default loading from API and does fall back on cached
+            // resources in case of not being able to load resources from API. This
+            // allows the app to work in offline mode for signedin users.
             clerk.load().await.map_err(|e| e.to_string())?;
             let app_handle_inner = app_handle.clone();
             clerk.add_listener(move |client, session, user, organization| {
@@ -131,7 +129,7 @@ pub struct ClerkPluginBuilder {
     pub domain: Option<String>,
     /// Store
     pub store: Option<Arc<dyn ClerkStateStore>>,
-    ///
+    /// Flag to use tauri store, requires tauri-store-plugin
     pub with_tauri_store: bool,
 }
 

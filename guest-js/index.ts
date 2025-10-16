@@ -1,7 +1,9 @@
 import type {
   ClerkOptions,
+  ClientResource,
   ClientJSONSnapshot,
   EnvironmentJSONSnapshot,
+  Without,
 } from "@clerk/types";
 import type {
   FapiRequestInit,
@@ -38,14 +40,21 @@ const sdkMetadata = {
 // STATE
 //
 
-let __internalClerk: Clerk | null = null;
+// Let's make the consumers types happy
+// oxlint-disable-next-line typescript/consistent-type-definitions
+interface HeadlessBrowserClerk extends Clerk {
+  load: (opts?: Without<ClerkOptions, "isSatellite">) => Promise<void>;
+  updateClient: (client: ClientResource) => void;
+}
+
+let __internalClerk: HeadlessBrowserClerk | null = null;
 
 //
 // MAIN ENTRY POINT
 //
 
-export const init = async (
-  initArgs: ClerkOptions,
+export const initClerk = async (
+  initArgs?: ClerkOptions,
   intLogger?: Logger,
 ): Promise<Clerk> => {
   applyGlobalPatches();

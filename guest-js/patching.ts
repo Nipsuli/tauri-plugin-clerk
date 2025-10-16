@@ -115,7 +115,7 @@ const patchFetch = async (
 
 let __internalIsPatched = false;
 
-export const applyGlobalPatches = () => {
+export const applyGlobalPatches = (): void => {
   if (__internalIsPatched) {
     return;
   }

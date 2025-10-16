@@ -43,8 +43,8 @@ const shouldUpdate = (oldClient, newClient) => {
 	if (!oldClient) return true;
 	if (oldClient.id !== newClient.id) return true;
 	if (oldClient.lastActiveSessionId !== newClient.last_active_session_id) return true;
-	const oldSessionIds = [...oldClient.sessions.map((s) => s.id)].sort();
-	const newSessionIds = [...newClient.sessions.map((s) => s.id)].sort();
+	const oldSessionIds = oldClient.sessions.map((session) => session.id).toSorted();
+	const newSessionIds = newClient.sessions.map((session) => session.id).toSorted();
 	if (oldSessionIds.length !== newSessionIds.length) return true;
 	for (let i = 0; i < oldSessionIds.length; i++) if (oldSessionIds[i] !== newSessionIds[i]) return true;
 	return false;
@@ -67,7 +67,9 @@ const emitClerkAuthEvent = (payload) => {
 };
 const getInitArgs = () => invoke("plugin:clerk|initialize");
 const getClientJWT = () => invoke("plugin:clerk|get_client_authorization_header");
-const saveClientJWT = (header) => invoke("plugin:clerk|set_client_authorization_header", { header });
+const saveClientJWT = async (header) => {
+	await invoke("plugin:clerk|set_client_authorization_header", { header });
+};
 
 //#endregion
 //#region guest-js/patching.ts
@@ -82,32 +84,29 @@ const RequestInitSchema = z.object({ clientConfig: z.object({
 	proxy: z.any()
 }) }).strict();
 const urlForRequestInput = (input) => typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url);
-const runTauriFetch = async (input, init$1) => {
-	const req = new Request(input, init$1);
-	const res = await fetch(req);
-	return res;
+const runTauriFetch = async (input, init) => {
+	return await fetch(new Request(input, init));
 };
-const shouldRunTauriFetch = (input, init$1) => {
-	const initHeaders = init$1?.headers;
+const shouldRunTauriFetch = (input, init) => {
+	const initHeaders = init?.headers;
 	if (initHeaders) if (initHeaders instanceof Headers) return initHeaders.has("x-tauri-fetch");
 	else if (Array.isArray(initHeaders)) return initHeaders.some((h) => h[0] === "x-tauri-fetch");
 	else return !!initHeaders["x-tauri-fetch"];
 	if (input instanceof Request) return input.headers.has("x-tauri-fetch");
 	return false;
 };
-const runRealFetch = async (input, init$1) => {
+const runRealFetch = async (input, init) => {
 	const url = urlForRequestInput(input);
-	const path = decodeURIComponent(url.pathname);
-	const shouldInjectHeaders = path === "/plugin:http|fetch";
-	let initToPass = init$1;
-	if (shouldInjectHeaders && typeof init$1?.body === "string") {
-		const rawBody = JSON.parse(init$1.body);
+	const shouldInjectHeaders = decodeURIComponent(url.pathname) === "/plugin:http|fetch";
+	let initToPass = init;
+	if (shouldInjectHeaders && typeof init?.body === "string") {
+		const rawBody = JSON.parse(init.body);
 		const body = RequestInitSchema.parse(rawBody);
 		const headers = [...body.clientConfig.headers, ["User-Agent", window.navigator.userAgent]];
 		if (body.clientConfig.headers.some((h) => h[0] === "x-no-origin")) headers.push(["Origin", ""]);
 		else headers.push(["Origin", window.location.origin]);
 		initToPass = {
-			...init$1,
+			...init,
 			body: JSON.stringify({
 				...body,
 				clientConfig: {
@@ -117,12 +116,11 @@ const runRealFetch = async (input, init$1) => {
 			})
 		};
 	}
-	const res = await realFetch(input, initToPass);
-	return res;
+	return await realFetch(input, initToPass);
 };
-const patchFetch = async (input, init$1) => {
-	if (shouldRunTauriFetch(input, init$1)) return await runTauriFetch(input, init$1);
-	else return await runRealFetch(input, init$1);
+const patchFetch = async (input, init) => {
+	if (shouldRunTauriFetch(input, init)) return await runTauriFetch(input, init);
+	else return await runRealFetch(input, init);
 };
 let __internalIsPatched = false;
 const applyGlobalPatches = () => {
@@ -195,6 +193,7 @@ const clerkClientToClientJSON = (client) => ({
 	sign_in: client.signIn ? clerkSignInToSignInJSON(client.signIn) : null,
 	captcha_bypass: client.captchaBypass,
 	last_active_session_id: client.lastActiveSessionId,
+	last_authentication_strategy: client.lastAuthenticationStrategy,
 	cookie_expires_at: client.cookieExpiresAt ? client.cookieExpiresAt.getTime() / 1e3 : null,
 	created_at: client.createdAt ? client.createdAt.getTime() / 1e3 : 0,
 	updated_at: client.updatedAt ? client.updatedAt.getTime() / 1e3 : 0
@@ -325,6 +324,7 @@ const clerkOrganizationMembershipToOrganizationMembershipJSON = (organizationMem
 	public_metadata: organizationMembership.publicMetadata,
 	public_user_data: clerkPublicUserDataToPublicUserDataJSON(organizationMembership.publicUserData),
 	role: organizationMembership.role,
+	role_name: organizationMembership.roleName,
 	created_at: organizationMembership.createdAt.getTime() / 1e3,
 	updated_at: organizationMembership.updatedAt.getTime() / 1e3
 });
@@ -359,7 +359,7 @@ const clerkUserToUserJSON = (user) => ({
 	create_organization_enabled: user.createOrganizationEnabled,
 	create_organizations_limit: user.createOrganizationsLimit,
 	delete_self_enabled: user.deleteSelfEnabled,
-	legal_accepted_at: null,
+	legal_accepted_at: user.legalAcceptedAt ? user.legalAcceptedAt.getTime() / 1e3 : null,
 	updated_at: user.updatedAt ? user.updatedAt.getTime() / 1e3 : 0,
 	created_at: user.createdAt ? user.createdAt.getTime() / 1e3 : 0
 });
@@ -406,19 +406,19 @@ var scripts = {
 	"checks": "run-p checks:*"
 };
 var dependencies = {
-	"@clerk/clerk-js": "^5.67.2",
-	"@clerk/types": "^4.59.0",
+	"@clerk/clerk-js": "^5.99.0",
+	"@clerk/types": "^4.92.0",
 	"@tauri-apps/api": ">=2.5.0",
 	"@tauri-apps/plugin-http": "^2.4.4",
-	"zod": "^3.25.23"
+	"zod": ">=4.0.0"
 };
 var devDependencies = {
 	"npm-run-all": "^4.1.5",
-	"oxlint": "^0.16.11",
-	"prettier": "^3.5.3",
-	"tsdown": "^0.12.2",
-	"tslib": "^2.6.2",
-	"typescript": "^5.3.3"
+	"oxlint": "^1.23.0",
+	"prettier": "^3.6.2",
+	"tsdown": "^0.15.7",
+	"tslib": "^2.8.1",
+	"typescript": "^5.9.3"
 };
 var package_default = {
 	name,
@@ -443,7 +443,7 @@ const sdkMetadata = {
 	version: package_default.version
 };
 let __internalClerk = null;
-const init = async (initArgs, intLogger) => {
+const initClerk = async (initArgs, intLogger) => {
 	applyGlobalPatches();
 	if (intLogger) setLogger(intLogger);
 	const { client, environment, publishableKey } = await getInitArgs();
@@ -491,4 +491,4 @@ const init = async (initArgs, intLogger) => {
 };
 
 //#endregion
-export { consoleLogger, init, noopLogger };
+export { consoleLogger, initClerk, noopLogger };

@@ -10,17 +10,17 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.31.6",
+    "@clerk/clerk-react": "^5.51.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tauri-plugin-clerk": "file:../.."
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
-    "@types/react": "^18.3.1",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "~5.6.2",
     "vite": "^6.0.3"

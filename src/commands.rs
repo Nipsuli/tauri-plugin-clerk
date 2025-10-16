@@ -1,19 +1,15 @@
 use crate::ClerkExt;
-use clerk_fapi_rs::models::{ClientPeriodClient, ClientPeriodEnvironment};
+use clerk_fapi_rs::models::{ClientClient, ClientEnvironment};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
-/*
-TODO:
-* better error handling
-*/
-
-/// Need to keep in sync with js
+/// Need to keep in sync with ClerkInitResponse in
+/// guest-js/sync.ts
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ClerkInitResponse {
-    environment: ClientPeriodEnvironment,
-    client: ClientPeriodClient,
+    environment: ClientEnvironment,
+    client: ClientClient,
     publishable_key: String,
     // TODO: DomainOrProxyUrl
     /* ts side

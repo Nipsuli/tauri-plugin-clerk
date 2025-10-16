@@ -2,9 +2,7 @@ import { Clerk } from "@clerk/clerk-js";
 import { ClerkOptions } from "@clerk/types";
 
 //#region guest-js/logger.d.ts
-type LoggerParams = {
-  [key: string]: unknown;
-};
+type LoggerParams = Record<string, unknown>;
 type Logger = {
   debug: (params: LoggerParams, message: string) => void;
   info: (params: LoggerParams, message: string) => void;
@@ -21,10 +19,8 @@ declare const consoleLogger: () => Logger;
  * To mute internal logs
  */
 declare const noopLogger: () => Logger;
-
 //#endregion
 //#region guest-js/index.d.ts
-declare const init: (initArgs: ClerkOptions, intLogger?: Logger) => Promise<Clerk>;
-
+declare const initClerk: (initArgs?: ClerkOptions, intLogger?: Logger) => Promise<Clerk>;
 //#endregion
-export { Logger, LoggerParams, consoleLogger, init, noopLogger };
+export { type Logger, type LoggerParams, consoleLogger, initClerk, noopLogger };

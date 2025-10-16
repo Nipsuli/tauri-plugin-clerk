@@ -1,6 +1,4 @@
-use clerk_fapi_rs::models::{
-    ClientPeriodClient, ClientPeriodOrganization, ClientPeriodSession, ClientPeriodUser,
-};
+use clerk_fapi_rs::models::{ClientClient, ClientOrganization, ClientSession, ClientUser};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Runtime};
@@ -8,14 +6,17 @@ use tauri::{AppHandle, Emitter, Runtime};
 pub const CLERK_AUTH_EVENT_NAME: &str = "plugin-clerk-auth-cb";
 pub const RUST_EVENT_SOURCE: &str = "rust";
 
-/// Need to be in sync with js side
+/// Need to be in sync with ClerkAuthEventPayload in
+/// guest-js/sync.ts
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClerkAuthEventPayload {
-    pub client: ClientPeriodClient,
-    pub session: Option<ClientPeriodSession>,
-    pub user: Option<ClientPeriodUser>,
-    pub organization: Option<ClientPeriodOrganization>,
+    pub client: ClientClient,
+    pub session: Option<ClientSession>,
+    pub user: Option<ClientUser>,
+    pub organization: Option<ClientOrganization>,
 }
+/// Need to be in sync with ClerkAuthEvent in
+/// guest-js/sync.ts
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClerkAuthEvent {
     // Window name or "rust" to identify sender

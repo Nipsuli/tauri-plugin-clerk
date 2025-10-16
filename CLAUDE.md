@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build & Run Commands
+
 - Build the plugin: `cargo build`
 - Build JS bindings: `npm run build`
 - Example app: `cd examples/tauri-app && cargo tauri dev`
@@ -12,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Format: `cargo fmt`
 
 ## Code Style Guidelines
+
 - Rust 2021 edition with minimum version 1.77.2
 - Use thiserror for error types with #[error] annotations
 - Follow Tauri plugin architecture patterns
@@ -23,6 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Documentation: Use /// for public API documentation
 
 ## Tauri Plugin Architecture Notes
+
 - Plugin structure: Core Rust implementation with optional JS bindings
 - Key files: lib.rs (setup), commands.rs (API), desktop.rs/mobile.rs (platform-specific)
 - Commands are registered with `invoke_handler(tauri::generate_handler![...])`
@@ -31,8 +34,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Permissions should be defined in permissions/default.toml
 
 ## Clerk Integration Notes
+
 - Using `clerk-fapi-rs` crate to interact with Clerk Frontend API
-- Client initialization pattern: 
+- Client initialization pattern:
   ```rust
   let config = ClerkFapiConfiguration::new(public_key, None, None);
   let clerk = Clerk::new(config).load().await?;
@@ -44,13 +48,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Securely store tokens using Tauri's secure storage
 
 ## clerk-fapi-rs Usage
+
 - Client initialization requires a public key (from Clerk dashboard)
 - Authentication methods include email code verification flow
 - Methods like `create_sign_in()` and `attempt_sign_in_factor_one()` handle auth
-- Session management via `sign_out()` and `set_active()` methods 
+- Session management via `sign_out()` and `set_active()` methods
 - Reactive state with `add_listener()` for tracking auth changes
 
 ## Resources
+
 - Tauri Plugin Development: https://v2.tauri.app/develop/plugins/
 - Clerk Frontend SDK Development: https://clerk.com/docs/references/sdk/frontend-only
-- clerk-fapi-rs: https://github.com/TheGrowthEngineeringCompany/clerk-fapi-rs
+- clerk-fapi-rs: https://github.com/Nipsuli/clerk-fapi-rs
