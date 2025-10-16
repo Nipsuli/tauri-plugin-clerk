@@ -2,7 +2,12 @@
   "name": "tauri-plugin-clerk",
   "version": "0.1.0",
   "author": "@Nipsuli",
-  "description": "",
+  "description": "An unofficial Tauri SDK for Clerk",
+  "keywords": [
+    "clerk",
+    "tauri",
+    "auth"
+  ],
   "type": "module",
   "types": "./dist-js/index.d.ts",
   "main": "./dist-js/index.js",
