@@ -11,7 +11,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Nipsuli/tauri-plugin-clerk"
+    "url": "git+https://github.com/Nipsuli/tauri-plugin-clerk.git"
   },
   "type": "module",
   "types": "./dist-js/index.d.ts",
