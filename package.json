@@ -28,7 +28,7 @@
   "scripts": {
     "build": "tsdown",
     "dev:js": "tsdown --watch ./guest-js",
-    "prepublishOnly": "npm build",
+    "prepublishOnly": "npm run build",
     "pretest": "npm build",
     "format": "prettier --write \"guest-js/**/*.ts\"",
     "checks:format": "prettier --check \"guest-js/**/*.ts\"",
