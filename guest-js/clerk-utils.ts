@@ -61,6 +61,7 @@ const clerkSignUpToSignUpJSON = (signUp: SignUpResource): SignUpJSON => ({
   legal_accepted_at: signUp.legalAcceptedAt,
   // nullify this as the VerificationJSON is messed up
   verifications: null,
+  locale: signUp.locale,
 });
 
 // Copy From @clerk/types
@@ -245,6 +246,7 @@ const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (
   // Required in the type, but not really available in the data
   created_at: 0,
   updated_at: 0,
+  enterprise_connection_id: enterpriseAccountConnection.enterpriseConnectionId,
 });
 
 const clerkEnterpriseAccountToEnterpriseAccountJSON = (
@@ -267,6 +269,10 @@ const clerkEnterpriseAccountToEnterpriseAccountJSON = (
   public_metadata: enterpriseAccount.publicMetadata ?? {},
   // nullify this as the VerificationJSON is messed up
   verification: null,
+  enterprise_connection_id: enterpriseAccount.enterpriseConnectionId,
+  last_authenticated_at: enterpriseAccount.lastAuthenticatedAt
+    ? enterpriseAccount.lastAuthenticatedAt.getTime() / 1000
+    : null,
 });
 
 const clerkPasskeyToPasskeyJSON = (passkey: PasskeyResource): PasskeyJSON => ({
