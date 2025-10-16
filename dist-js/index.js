@@ -2,7 +2,6 @@ import { Clerk } from "@clerk/clerk-js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
-import z from "zod";
 import { fetch } from "@tauri-apps/plugin-http";
 
 //#region guest-js/logger.ts
@@ -74,15 +73,6 @@ const saveClientJWT = async (header) => {
 //#endregion
 //#region guest-js/patching.ts
 const realFetch = globalThis.fetch;
-const RequestInitSchema = z.object({ clientConfig: z.object({
-	url: z.string(),
-	headers: z.array(z.tuple([z.string(), z.string()])),
-	method: z.string(),
-	data: z.any(),
-	maxRedirections: z.any(),
-	connectTimeout: z.any(),
-	proxy: z.any()
-}) }).strict();
 const urlForRequestInput = (input) => typeof input === "string" ? new URL(input) : input instanceof URL ? input : new URL(input.url);
 const runTauriFetch = async (input, init) => {
 	return await fetch(new Request(input, init));
@@ -95,26 +85,36 @@ const shouldRunTauriFetch = (input, init) => {
 	if (input instanceof Request) return input.headers.has("x-tauri-fetch");
 	return false;
 };
+const parseTauriFetchBody = (obj) => {
+	if (obj && typeof obj === "object" && obj !== null && "clientConfig" in obj && typeof obj.clientConfig === "object" && obj.clientConfig !== null && !Array.isArray(obj.clientConfig)) return obj;
+	throw new Error("Invalid Tauri Fetch Body: no clientConfig");
+};
+const getHeadersFromTauriFetchBody = (body) => {
+	if ("headers" in body.clientConfig && Array.isArray(body.clientConfig.headers) && body.clientConfig.headers.every((v) => Array.isArray(v) && v.length === 2 && typeof v[0] === "string" && typeof v[1] === "string")) return body.clientConfig.headers;
+	throw new Error("Invalid Tauri Fetch Body: no headers");
+};
 const runRealFetch = async (input, init) => {
 	const url = urlForRequestInput(input);
 	const shouldInjectHeaders = decodeURIComponent(url.pathname) === "/plugin:http|fetch";
 	let initToPass = init;
 	if (shouldInjectHeaders && typeof init?.body === "string") {
-		const rawBody = JSON.parse(init.body);
-		const body = RequestInitSchema.parse(rawBody);
-		const headers = [...body.clientConfig.headers, ["User-Agent", window.navigator.userAgent]];
-		if (body.clientConfig.headers.some((h) => h[0] === "x-no-origin")) headers.push(["Origin", ""]);
-		else headers.push(["Origin", window.location.origin]);
-		initToPass = {
-			...init,
-			body: JSON.stringify({
-				...body,
-				clientConfig: {
-					...body.clientConfig,
-					headers
-				}
-			})
-		};
+		const body = parseTauriFetchBody(JSON.parse(init.body));
+		const existingHeaders = getHeadersFromTauriFetchBody(body);
+		if (existingHeaders) {
+			const headers = [...existingHeaders, ["User-Agent", window.navigator.userAgent]];
+			if (existingHeaders.some((h) => h[0] === "x-no-origin")) headers.push(["Origin", ""]);
+			else headers.push(["Origin", window.location.origin]);
+			initToPass = {
+				...init,
+				body: JSON.stringify({
+					body,
+					clientConfig: {
+						...body.clientConfig,
+						headers
+					}
+				})
+			};
+		}
 	}
 	return await realFetch(input, initToPass);
 };

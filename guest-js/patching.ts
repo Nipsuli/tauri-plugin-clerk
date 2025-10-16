@@ -1,4 +1,3 @@
-import z from "zod";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
 //
@@ -14,20 +13,7 @@ type Fetch = typeof realFetch;
 type FetchReturn = ReturnType<Fetch>;
 type FetchArgs = Parameters<Fetch>;
 
-const RequestInitSchema = z
-  .object({
-    clientConfig: z.object({
-      url: z.string(),
-      headers: z.array(z.tuple([z.string(), z.string()])),
-      // We only care about headers and url
-      method: z.string(),
-      data: z.any(),
-      maxRedirections: z.any(),
-      connectTimeout: z.any(),
-      proxy: z.any(),
-    }),
-  })
-  .strict();
+type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
 const urlForRequestInput = (input: FetchArgs[0]) =>
   typeof input === "string"
@@ -61,6 +47,42 @@ const shouldRunTauriFetch = (input: FetchArgs[0], init: FetchArgs[1]) => {
   return false;
 };
 
+const parseTauriFetchBody = (
+  obj: Json,
+): { clientConfig: { [key: string]: Json } } => {
+  if (
+    obj &&
+    typeof obj === "object" &&
+    obj !== null &&
+    "clientConfig" in obj &&
+    typeof obj.clientConfig === "object" &&
+    obj.clientConfig !== null &&
+    !Array.isArray(obj.clientConfig)
+  ) {
+    return obj as { clientConfig: { [key: string]: Json } };
+  }
+  throw new Error("Invalid Tauri Fetch Body: no clientConfig");
+};
+
+const getHeadersFromTauriFetchBody = (body: {
+  clientConfig: { [key: string]: Json };
+}): [string, string][] => {
+  if (
+    "headers" in body.clientConfig &&
+    Array.isArray(body.clientConfig.headers) &&
+    body.clientConfig.headers.every(
+      (v): v is [string, string] =>
+        Array.isArray(v) &&
+        v.length === 2 &&
+        typeof v[0] === "string" &&
+        typeof v[1] === "string",
+    )
+  ) {
+    return body.clientConfig.headers;
+  }
+  throw new Error("Invalid Tauri Fetch Body: no headers");
+};
+
 const runRealFetch = async (input: FetchArgs[0], init: FetchArgs[1]) => {
   // tauri-plugin-http uses plain fetch so we here indentify
   // if we should modify the request headers that are sent
@@ -72,29 +94,33 @@ const runRealFetch = async (input: FetchArgs[0], init: FetchArgs[1]) => {
   let initToPass = init;
 
   if (shouldInjectHeaders && typeof init?.body === "string") {
-    const rawBody = JSON.parse(init.body) as unknown;
-    const body = RequestInitSchema.parse(rawBody);
-    const headers = [
-      ...body.clientConfig.headers,
-      ["User-Agent", window.navigator.userAgent],
-    ];
+    const rawBody = JSON.parse(init.body) as Json;
+    const body = parseTauriFetchBody(rawBody);
+    const existingHeaders = getHeadersFromTauriFetchBody(body);
 
-    if (body.clientConfig.headers.some((h) => h[0] === "x-no-origin")) {
-      headers.push(["Origin", ""]);
-    } else {
-      headers.push(["Origin", window.location.origin]);
+    if (existingHeaders) {
+      const headers = [
+        ...existingHeaders,
+        ["User-Agent", window.navigator.userAgent],
+      ] as [string, string][];
+
+      if (existingHeaders.some((h) => h[0] === "x-no-origin")) {
+        headers.push(["Origin", ""]);
+      } else {
+        headers.push(["Origin", window.location.origin]);
+      }
+
+      initToPass = {
+        ...init,
+        body: JSON.stringify({
+          body,
+          clientConfig: {
+            ...body.clientConfig,
+            headers,
+          },
+        }),
+      };
     }
-
-    initToPass = {
-      ...init,
-      body: JSON.stringify({
-        ...body,
-        clientConfig: {
-          ...body.clientConfig,
-          headers,
-        },
-      }),
-    };
   }
 
   const res = await realFetch(input, initToPass);
