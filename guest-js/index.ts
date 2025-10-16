@@ -82,6 +82,13 @@ export const initClerk = async (
   // As the rust side can load the client and environment from
   // cache we can intitlize even when no network connection
   // similar to clerk-expo
+  // TODO: figure out why this doesn't work as expected, setting
+  // experimental: {
+  //  ...initArgs?.experimental,
+  //  rethrowOfflineNetworkErrors: true,
+  //},
+  // on the clerk.load fails on other errors
+  //
   // oxlint-disable-next-line eslint/require-await
   __internalClerk.__internal_getCachedResources = async () => ({
     client: client as ClientJSONSnapshot,

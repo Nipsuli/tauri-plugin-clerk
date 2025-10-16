@@ -12,7 +12,7 @@ links = "tauri-plugin-clerk"
 license = "MIT"
 
 [dependencies]
-tauri = { version = "2.4.1" }
+tauri = { version = "2" }
 serde = "1.0"
 thiserror = "2"
 clerk-fapi-rs = "0.2.0"
