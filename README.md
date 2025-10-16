@@ -83,3 +83,36 @@ const AppLoaded = ({ clerkPromise }: { clerkPromise: Promise<Clerk> }) => {
 ```
 
 See examples for more
+
+## Why this package works the way it does?
+
+As tauri uses native webwiev (=browser) the first question easily is why is this
+package needed? The reason why one cannot use the default clerk web packages is
+how web views on different platform deals with cookies. Example on mac cookies do
+not work on custom domains such as Tauri uses. One way around this is to patch
+`document.cookies` but that leaves the authenticated state only on the client
+side. Another solution is to have the the authentication state fully on rust side
+and for that there is [clerk-fapi-rs](https://crates.io/crates/clerk-fapi-rs)
+which works well with Tauri.
+
+The solution this package takes is to patch global fetch and pipe fetch calls that
+have `x-tauri-fetch` header through [tauri-plugin-http](https://crates.io/crates/tauri-plugin-http)
+this is because of the limitations of the the API resulting in error like:
+
+```json
+{
+  "errors": [
+    {
+      "message": "Setting both the 'Origin' and 'Authorization' headers is forbidden",
+      "long_message": "For security purposes, only one of the 'Origin' and 'Authorization' headers should be provided, but not both. In browser contexts, the 'Origin' header is set automatically by the browser. In native application contexts (e.g. mobile apps), set the 'Authorization' header.",
+      "code": "origin_authorization_headers_conflict"
+    }
+  ],
+  "clerk_trace_id": "..."
+}
+```
+
+By patching the global fetch to direct api calls through rust we can use the Clerk
+javascript package as is and hook to the `onBeforeRequest` and `onAfterResponse`
+hooks similarly as in the clerk expo package does. In addition this package allows
+one to persist the Clerk session on disk to maintain the login state.
