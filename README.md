@@ -2,8 +2,8 @@
 
 Community maintained Clerk SDK for Tauri apps.
 
-There's also platfrom agnostic Rust implementations of
-[Clerk's Frondend API (FAPI)](https://github.com/Nipsuli/clerk-fapi-rs) and
+There's also platform agnostic Rust implementations of
+[Clerk's Frontend API (FAPI)](https://github.com/Nipsuli/clerk-fapi-rs) and
 [Clerk's Backend API (BAPI)](https://github.com/DarrenBaldwin07/clerk-rs)
 available.
 
@@ -25,7 +25,7 @@ In the app directory
 npm install tauri-plugin-clerk
 ```
 
-Add `clerk:default` to the persmissions. And ensure the `http` permissions allow
+Add `clerk:default` to the permissions. And ensure the `http` permissions allow
 connecting to your Clerk host. Simple `src-tauri/capabilities/default.json`
 
 ```json
@@ -104,16 +104,17 @@ See examples for more
 
 ## Core Idea
 
-The Javascript side of Clerk is the one that orchestrates everyting but the auth
-state is propagated to Rust side as well so one can get the current auth state
-in rust code as well. The syncing of client state from rust side back to
+The Javascript side of Clerk is the one that orchestrates everything but the
+auth state is propagated to Rust side as well so one can get the current auth
+state in rust code as well. The syncing of client state from rust side back to
 javascript is still in the works.
 
-One can use the js side Clerk functionality almost as in browser environment.
+One can use the js side Clerk functionality almost as in browser environment and
+in combination of other Clerk frontend SDK's such as `@clerk/clerk-react`
 
 Some limitations:
 
-- OAuth flows do not work in the default singin component. Haven't figured out a
+- OAuth flows do not work in the default signin component. Haven't figured out a
   good way to do those in Tauri, one might be able to build custom auth flow for
   that, haven't tested yet.
 - Magic links don't work, haven't figured out a way to make those work in Tauri
@@ -129,7 +130,7 @@ Due to some limitations of Tauri platform:
 
 ## Why this package works the way it does?
 
-As tauri uses native webwiev (=browser) the first question easily is why is this
+As tauri uses native webview (=browser) the first question easily is why is this
 package needed? The reason why one cannot use the default Clerk web packages is
 how web views on different platform deals with cookies. Example on mac cookies
 do not work on custom domains such as Tauri uses. One way around this is to
