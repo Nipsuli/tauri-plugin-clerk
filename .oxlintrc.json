@@ -34,6 +34,9 @@
     "eslint/id-length": "off",
     "eslint/no-plusplus": "off",
     "eslint/no-undefined": "off",
-    "unicorn/prefer-query-selector": "off"
+    "unicorn/prefer-query-selector": "off",
+    "eslint/no-warning-comments": "off",
+    "eslint/func-style": "off",
+    "eslint/prefer-template": "off"
   }
 }
