@@ -1,37 +1,55 @@
-# Tauri Plugin clerk
+# Clerk Tauri SDK
 
-Status: works, see `examples/react-example`
-This is in use in production at [reconfigured](https://reconfigured.io/)
+Community maintained Clerk SDK for Tauri apps.
 
-The platfrom agnostic Clerk FAPI in rust can be found from [here](https://github.com/Nipsuli/clerk-fapi-rs).
+There's also platfrom agnostic Rust implementations of
+[Clerk's Frondend API (FAPI)](https://github.com/Nipsuli/clerk-fapi-rs) and
+[Clerk's Backend API (BAPI)](https://github.com/DarrenBaldwin07/clerk-rs)
+available.
 
-## Core Idea
-
-The Javascript side of Clerk is the one that orchestrates everyting but the auth
-state is propagated to Rust side as well so one can get the current auth state
-in rust code as well. The syncing of client state from rust side back to javascript
-is still in the works.
-
-One can use the js side Clerk functionality almost as in browser environment.
-
-Some limitations:
-
-- OAuth flows do not work in the default singin component. Haven't figured out
-  a good way to do those in Tauri, one might be able to build custom auth flow
-  for that, haven't tested yet.
-- Magic links don't work, haven't figured out a way to make those work in Tauri
-- DomainOrProxy is not yet implemented
-
-## Notes
-
-Due to some limitations of Tauri platform:
-
-- Requires `tauri_plugin_http` to be initialized
-- This package patches `globalThis.fetch` to be able to route Clerk calls via rust
+This package is in use in production at [reconfigured](https://reconfigured.io/)
 
 ## Usage
 
-Rust side
+Install both the Rust and js packages:
+
+In the `src-tauri` directory
+
+```bash
+cargo add tauri-plugin-clerk
+```
+
+In the app directory
+
+```bash
+npm install tauri-plugin-clerk
+```
+
+Add `clerk:default` to the persmissions. And ensure the `http` permissions allow
+connecting to your Clerk host. Simple `src-tauri/capabilities/default.json`
+
+```json
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "",
+  "windows": ["main"],
+  "permissions": [
+    "clerk:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://*"
+        }
+      ]
+    }
+    ... rest of the permissions
+  ],
+}
+```
+
+Initialize the plugin on the tauri entrypoint
 
 ```rs
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -56,14 +74,14 @@ pub fn run() {
 }
 ```
 
-Client with React
+Example minimal client with React
 
 ```tsx
 import type { Clerk } from "@clerk/clerk-js";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { initClerk } from "tauri-plugin-clerk";
 
-const App = () => {
+export const App = () => {
   const clerkPromise = initClerk();
   return (
     <Suspense fallback={<div>loading...</div>}>
@@ -84,20 +102,48 @@ const AppLoaded = ({ clerkPromise }: { clerkPromise: Promise<Clerk> }) => {
 
 See examples for more
 
+## Core Idea
+
+The Javascript side of Clerk is the one that orchestrates everyting but the auth
+state is propagated to Rust side as well so one can get the current auth state
+in rust code as well. The syncing of client state from rust side back to
+javascript is still in the works.
+
+One can use the js side Clerk functionality almost as in browser environment.
+
+Some limitations:
+
+- OAuth flows do not work in the default singin component. Haven't figured out a
+  good way to do those in Tauri, one might be able to build custom auth flow for
+  that, haven't tested yet.
+- Magic links don't work, haven't figured out a way to make those work in Tauri
+- DomainOrProxy is not yet implemented
+
+## Notes
+
+Due to some limitations of Tauri platform:
+
+- Requires `tauri_plugin_http` to be initialized
+- This package patches `globalThis.fetch` to be able to route Clerk calls via
+  rust
+
 ## Why this package works the way it does?
 
 As tauri uses native webwiev (=browser) the first question easily is why is this
-package needed? The reason why one cannot use the default clerk web packages is
-how web views on different platform deals with cookies. Example on mac cookies do
-not work on custom domains such as Tauri uses. One way around this is to patch
-`document.cookies` but that leaves the authenticated state only on the client
-side. Another solution is to have the the authentication state fully on rust side
-and for that there is [clerk-fapi-rs](https://crates.io/crates/clerk-fapi-rs)
-which works well with Tauri.
+package needed? The reason why one cannot use the default Clerk web packages is
+how web views on different platform deals with cookies. Example on mac cookies
+do not work on custom domains such as Tauri uses. One way around this is to
+patch `document.cookies` but that leaves the authenticated state only on the
+client side and would still require patching fetch calls to intercept cookies.
+Another solution is to have the the authentication state fully on rust side and
+for that there is [clerk-fapi-rs](https://crates.io/crates/clerk-fapi-rs) which
+works well with Tauri in case one is building more rust heavy Tauri app.
 
-The solution this package takes is to patch global fetch and pipe fetch calls that
-have `x-tauri-fetch` header through [tauri-plugin-http](https://crates.io/crates/tauri-plugin-http)
-this is because of the limitations of the the API resulting in error like:
+The solution this package takes is to patch global fetch and pipe fetch calls
+that have `x-tauri-fetch` header through
+[tauri-plugin-http](https://crates.io/crates/tauri-plugin-http) this is because
+of the limitations of the the API resulting in error if one just appends the JWT
+token in client side calls:
 
 ```json
 {
@@ -112,7 +158,12 @@ this is because of the limitations of the the API resulting in error like:
 }
 ```
 
-By patching the global fetch to direct api calls through rust we can use the Clerk
-javascript package as is and hook to the `onBeforeRequest` and `onAfterResponse`
-hooks similarly as in the clerk expo package does. In addition this package allows
-one to persist the Clerk session on disk to maintain the login state.
+By patching the global fetch to direct api calls through rust we can use the
+Clerk javascript package as is and hook to the `onBeforeRequest` and
+`onAfterResponse` hooks similarly as in the Clerk expo package does. In addition
+this package allows one to persist the Clerk session on disk to maintain the
+login state.
+
+## Contributing
+
+Contributions in form of issues and prs are welcome.
