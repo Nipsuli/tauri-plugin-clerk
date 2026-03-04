@@ -1,5 +1,5 @@
 import { Clerk } from "@clerk/clerk-js";
-import { ClerkOptions } from "@clerk/types";
+import { ClerkOptions } from "@clerk/shared/types";
 
 //#region guest-js/logger.d.ts
 type LoggerParams = Record<string, unknown>;

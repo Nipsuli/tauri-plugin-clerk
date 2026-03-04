@@ -2,7 +2,7 @@ import type {
   ClerkOptions,
   ClientJSONSnapshot,
   EnvironmentJSONSnapshot,
-} from "@clerk/types";
+} from "@clerk/shared/types";
 import type {
   FapiRequestInit,
   FapiResponse,
@@ -95,7 +95,7 @@ export const initClerk = async (
     environment: environment as EnvironmentJSONSnapshot,
   });
 
-  __internalClerk.__unstable__onBeforeRequest(
+  __internalClerk.__internal_onBeforeRequest(
     async (requestInit: FapiRequestInit): Promise<void> => {
       requestInit.credentials = "omit";
       requestInit.url?.searchParams.append("_is_native", "1");
@@ -108,7 +108,7 @@ export const initClerk = async (
     },
   );
 
-  __internalClerk.__unstable__onAfterResponse(
+  __internalClerk.__internal_onAfterResponse(
     // in this case we need to use any due Clerks internal typings
     // oxlint-disable-next-line typescript/no-explicit-any
     async (_: FapiRequestInit, response?: FapiResponse<any>): Promise<void> => {

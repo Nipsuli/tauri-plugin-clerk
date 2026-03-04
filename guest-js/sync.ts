@@ -5,7 +5,7 @@ import type {
   OrganizationJSON,
   SessionJSON,
   UserJSON,
-} from "@clerk/types";
+} from "@clerk/shared/types";
 import type { Clerk } from "@clerk/clerk-js";
 
 import { getCurrentWindow } from "@tauri-apps/api/window";

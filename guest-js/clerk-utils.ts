@@ -35,7 +35,7 @@ import type {
   UserResource,
   Web3WalletJSON,
   Web3WalletResource,
-} from "@clerk/types";
+} from "@clerk/shared/types";
 
 const clerkSignUpToSignUpJSON = (signUp: SignUpResource): SignUpJSON => ({
   object: "sign_up",
@@ -64,14 +64,14 @@ const clerkSignUpToSignUpJSON = (signUp: SignUpResource): SignUpJSON => ({
   locale: signUp.locale,
 });
 
-// Copy From @clerk/types
+// Copy From @clerk/shared/types
 type CamelToSnake<T> = T extends `${infer C0}${infer R}`
   ? `${C0 extends Uppercase<C0> ? "_" : ""}${Lowercase<C0>}${CamelToSnake<R>}`
   : T extends object
-    ? {
-        [K in keyof T as CamelToSnake<Extract<K, string>>]: T[K];
-      }
-    : T;
+  ? {
+    [K in keyof T as CamelToSnake<Extract<K, string>>]: T[K];
+  }
+  : T;
 
 const strFromCamelToSnake = (str: string): string => {
   if (!str) {
@@ -258,8 +258,8 @@ const clerkEnterpriseAccountToEnterpriseAccountJSON = (
   email_address: enterpriseAccount.emailAddress ?? "",
   enterprise_connection: enterpriseAccount.enterpriseConnection
     ? clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON(
-        enterpriseAccount.enterpriseConnection,
-      )
+      enterpriseAccount.enterpriseConnection,
+    )
     : null,
   first_name: enterpriseAccount.firstName ?? "",
   last_name: enterpriseAccount.lastName ?? "",
