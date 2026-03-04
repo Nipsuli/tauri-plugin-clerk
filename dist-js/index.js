@@ -348,7 +348,6 @@ const clerkUserToUserJSON = (user) => ({
 	external_accounts: user.externalAccounts.map(clerkExternalAccountToExternalAccountJSON),
 	enterprise_accounts: user.enterpriseAccounts.map(clerkEnterpriseAccountToEnterpriseAccountJSON),
 	passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
-	saml_accounts: [],
 	organization_memberships: user.organizationMemberships.map(clerkOrganizationMembershipToOrganizationMembershipJSON),
 	password_enabled: user.passwordEnabled,
 	profile_image_id: user.imageUrl,
@@ -386,7 +385,7 @@ const clerkOrganizationToOrganizationJSON = (organization) => ({
 //#endregion
 //#region package.json
 var name = "tauri-plugin-clerk";
-var version = "0.1.0";
+var version = "0.1.1";
 
 //#endregion
 //#region guest-js/index.ts
@@ -416,7 +415,7 @@ const initClerk = async (initArgs, intLogger) => {
 		client,
 		environment
 	});
-	__internalClerk.__unstable__onBeforeRequest(async (requestInit) => {
+	__internalClerk.__internal_onBeforeRequest(async (requestInit) => {
 		requestInit.credentials = "omit";
 		requestInit.url?.searchParams.append("_is_native", "1");
 		const jwt = await getClientJWT();
@@ -425,7 +424,7 @@ const initClerk = async (initArgs, intLogger) => {
 		requestInit.headers.set("x-no-origin", "1");
 		requestInit.headers.set("x-tauri-fetch", "1");
 	});
-	__internalClerk.__unstable__onAfterResponse(async (_, response) => {
+	__internalClerk.__internal_onAfterResponse(async (_, response) => {
 		if (!response) {
 			logger.warn({}, "No response in Fapi call");
 			return;

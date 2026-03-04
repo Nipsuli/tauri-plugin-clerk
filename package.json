@@ -1,6 +1,6 @@
 {
   "name": "tauri-plugin-clerk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "@Nipsuli",
   "description": "An unofficial Tauri SDK for Clerk",
   "keywords": [
