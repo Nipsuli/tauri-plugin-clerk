@@ -1,12 +1,10 @@
 import type {
+  ClerkAPIErrorJSON,
   ClerkOptions,
+  ClientJSON,
   ClientJSONSnapshot,
   EnvironmentJSONSnapshot,
 } from "@clerk/shared/types";
-import type {
-  FapiRequestInit,
-  FapiResponse,
-} from "@clerk/clerk-js/dist/types/core/fapiClient";
 import { Clerk } from "@clerk/clerk-js";
 
 import { type Logger, logger, setLogger } from "./logger";
@@ -28,6 +26,29 @@ import { name, version } from "../package.json";
 
 export type { Logger, LoggerParams } from "./logger";
 export { consoleLogger, noopLogger } from "./logger";
+
+type FapiResponse<T> = Response & {
+  payload: FapiResponseJSON<T> | null;
+};
+
+interface FapiResponseJSON<T> {
+  response: T;
+  client?: ClientJSON;
+  errors?: ClerkAPIErrorJSON[];
+  meta?: {
+    client?: ClientJSON;
+    session_id?: string;
+  };
+}
+
+type FapiRequestInit = RequestInit & {
+  path?: string;
+  search?: ConstructorParameters<typeof URLSearchParams>[0];
+  sessionId?: string;
+  rotatingTokenNonce?: string;
+  pathPrefix?: string;
+  url?: URL;
+};
 
 const sdkMetadata = {
   name,

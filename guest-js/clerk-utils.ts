@@ -341,7 +341,6 @@ export const clerkUserToUserJSON = (user: UserResource): UserJSON => ({
     clerkEnterpriseAccountToEnterpriseAccountJSON,
   ),
   passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
-  saml_accounts: [],
   organization_memberships: user.organizationMemberships.map(
     clerkOrganizationMembershipToOrganizationMembershipJSON,
   ),
