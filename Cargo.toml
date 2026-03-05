@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-clerk"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["@Nipsuli"]
 homepage = "https://github.com/Nipsuli/tauri-plugin-clerk/"
 repository = "https://github.com/Nipsuli/tauri-plugin-clerk/"
