@@ -1,11 +1,13 @@
 import type {
   ClerkAPIErrorJSON,
   ClerkOptions,
+  ClerkUIConstructor,
   ClientJSON,
   ClientJSONSnapshot,
   EnvironmentJSONSnapshot,
 } from "@clerk/shared/types";
 import { Clerk } from "@clerk/clerk-js";
+import { loadClerkUIScript } from "@clerk/shared/loadClerkJsScript";
 
 import { type Logger, logger, setLogger } from "./logger";
 import {
@@ -116,6 +118,23 @@ export const initClerk = async (
     environment: environment as EnvironmentJSONSnapshot,
   });
 
+  // In Core 3 (@clerk/clerk-js v6), UI components are no longer bundled
+  // with the main clerk-js ESM module. They must be loaded separately
+  // from CDN and explicitly passed to clerk.load() via the ui option.
+  let clerkUI: ClerkUIConstructor | undefined;
+  try {
+    await loadClerkUIScript({ publishableKey });
+    clerkUI = (
+      window as Window & { __internal_ClerkUICtor?: ClerkUIConstructor }
+    ).__internal_ClerkUICtor;
+  } catch (e) {
+    logger.warn(
+      { error: e },
+      "Plugin:clerk: Failed to load Clerk UI components from CDN. " +
+        "Pre-built UI components (SignIn, UserButton, etc.) will not be available.",
+    );
+  }
+
   __internalClerk.__internal_onBeforeRequest(
     async (requestInit: FapiRequestInit): Promise<void> => {
       requestInit.credentials = "omit";
@@ -155,11 +174,15 @@ export const initClerk = async (
     },
   );
 
-  await __internalClerk.load({
+  const loadOptions: ClerkOptions = {
     ...initArgs,
     sdkMetadata,
     standardBrowser: false,
-  });
+  };
+  if (clerkUI) {
+    loadOptions.ui = { ClerkUI: clerkUI };
+  }
+  await __internalClerk.load(loadOptions);
 
   return __internalClerk;
 };

@@ -1,4 +1,5 @@
 import { Clerk } from "@clerk/clerk-js";
+import { loadClerkUIScript } from "@clerk/shared/loadClerkJsScript";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -415,6 +416,13 @@ const initClerk = async (initArgs, intLogger) => {
 		client,
 		environment
 	});
+	let clerkUI;
+	try {
+		await loadClerkUIScript({ publishableKey });
+		clerkUI = window.__internal_ClerkUICtor;
+	} catch (e) {
+		logger.warn({ error: e }, "Plugin:clerk: Failed to load Clerk UI components from CDN. Pre-built UI components (SignIn, UserButton, etc.) will not be available.");
+	}
 	__internalClerk.__internal_onBeforeRequest(async (requestInit) => {
 		requestInit.credentials = "omit";
 		requestInit.url?.searchParams.append("_is_native", "1");
@@ -433,11 +441,13 @@ const initClerk = async (initArgs, intLogger) => {
 		if (header) await saveClientJWT(header);
 		if ("native_api_disabled" === response.payload?.errors?.[0]?.code) console.error("The Native API is disabled for this instance.\n", "Go to Clerk Dashboard > Configure > Native applications to enable it.\n", "Or, navigate here: https://dashboard.clerk.com/last-active?path=native-applications");
 	});
-	await __internalClerk.load({
+	const loadOptions = {
 		...initArgs,
 		sdkMetadata,
 		standardBrowser: false
-	});
+	};
+	if (clerkUI) loadOptions.ui = { ClerkUI: clerkUI };
+	await __internalClerk.load(loadOptions);
 	return __internalClerk;
 };
 
