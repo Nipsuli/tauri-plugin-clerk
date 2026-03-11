@@ -9,7 +9,7 @@
     "restriction": "error"
   },
   "rules": {
-    "typescript/consistent-type-definitions": ["error", "type"],
+    "typescript/consistent-type-definitions": "off",
     "eslint/max-lines-per-function": "off",
     "eslint/max-nested-callbacks": "off",
     "unicorn/filename-case": "off",
@@ -37,6 +37,15 @@
     "unicorn/prefer-query-selector": "off",
     "eslint/no-warning-comments": "off",
     "eslint/func-style": "off",
-    "eslint/prefer-template": "off"
+    "eslint/prefer-template": "off",
+    "unicorn/prefer-ternary": "off",
+    "eslint/no-use-before-define": "off",
+    "typescript/consistent-indexed-object-style": "off",
+    "eslint/no-implicit-coercion": "off",
+    "eslint/capitalized-comments": "off",
+    "eslint/max-statements": "off",
+    "unicorn/catch-error-name": "off",
+    "eslint/no-shadow": "off",
+    "eslint/init-declarations": "off"
   }
 }
