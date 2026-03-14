@@ -78,7 +78,7 @@ Example minimal client with React
 
 ```tsx
 import type { Clerk } from "@clerk/clerk-js";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/react";
 import { initClerk } from "tauri-plugin-clerk";
 
 export const App = () => {
@@ -110,7 +110,7 @@ state in rust code as well. The syncing of client state from rust side back to
 javascript is still in the works.
 
 One can use the js side Clerk functionality almost as in browser environment and
-in combination of other Clerk frontend SDK's such as `@clerk/clerk-react`
+in combination of other Clerk frontend SDK's such as `@clerk/react`
 
 Some limitations:
 
