@@ -1,9 +1,9 @@
 [package]
 name = "tauri-plugin-clerk"
 version = "0.1.1"
-authors = ["@Nipsuli"]
-homepage = "https://github.com/Nipsuli/tauri-plugin-clerk/"
-repository = "https://github.com/Nipsuli/tauri-plugin-clerk/"
+authors = ["@Nipsuli", "Moonfire Ventures"]
+homepage = "https://github.com/moonfire-ventures/tauri-plugin-clerk/"
+repository = "https://github.com/moonfire-ventures/tauri-plugin-clerk/"
 description = "An unofficial Tauri SDK for Clerk"
 keywords = ["clerk", "tauri", "auth", "frontend"]
 edition = "2021"

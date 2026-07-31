@@ -2,6 +2,7 @@
   "name": "tauri-plugin-clerk",
   "version": "0.1.1",
   "author": "@Nipsuli",
+  "contributors": ["Moonfire Ventures"],
   "description": "An unofficial Tauri SDK for Clerk",
   "keywords": [
     "clerk",
@@ -11,7 +12,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nipsuli/tauri-plugin-clerk.git"
+    "url": "git+https://github.com/moonfire-ventures/tauri-plugin-clerk.git"
   },
   "type": "module",
   "types": "./dist-js/index.d.ts",
