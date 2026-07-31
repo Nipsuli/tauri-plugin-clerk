@@ -53,13 +53,13 @@ const initListener = async (clerk) => {
 	await listen(CLERK_AUTH_EVENT_NAME, (event) => {
 		const authEvent = event.payload;
 		if (authEvent.source !== __internalWindowLabel) {
-			logger.debug({ authEvent }, "Plugin:clerk: received auth event");
+			logger.debug({}, "Plugin:clerk: received auth state change");
 			if (shouldUpdate(clerk.client, authEvent.payload.client)) logger.debug({}, "Plugin:clerk: refreshing session");
 		}
 	});
 };
 const emitClerkAuthEvent = (payload) => {
-	logger.debug({ payload }, "Plugin:clerk: emitting auth event");
+	logger.debug({}, "Plugin:clerk: emitting auth state change");
 	emit(CLERK_AUTH_EVENT_NAME, {
 		source: __internalWindowLabel,
 		payload
@@ -132,105 +132,78 @@ const applyGlobalPatches = () => {
 
 //#endregion
 //#region guest-js/clerk-utils.ts
-const clerkSignUpToSignUpJSON = (signUp) => ({
-	object: "sign_up",
-	id: signUp.id,
-	status: signUp.status,
-	required_fields: signUp.requiredFields,
-	optional_fields: signUp.optionalFields,
-	missing_fields: signUp.missingFields,
-	unverified_fields: signUp.unverifiedFields,
-	username: signUp.username,
-	first_name: signUp.firstName,
-	last_name: signUp.lastName,
-	email_address: signUp.emailAddress,
-	phone_number: signUp.phoneNumber,
-	web3_wallet: signUp.web3wallet,
-	external_account_strategy: null,
-	external_account: null,
-	has_password: signUp.hasPassword,
-	unsafe_metadata: signUp.unsafeMetadata,
-	created_session_id: signUp.createdSessionId,
-	created_user_id: signUp.createdUserId,
-	abandon_at: signUp.abandonAt,
-	legal_accepted_at: signUp.legalAcceptedAt,
-	verifications: null,
-	locale: signUp.locale
-});
-const strFromCamelToSnake = (str) => {
-	if (!str) return "";
-	return str.replace(/[A-Z]/g, (match, offset) => {
-		if (offset === 0) return match.toLowerCase();
-		else return `_${match.toLowerCase()}`;
-	});
+const RUST_SUPPORTED_IDENTIFICATION_LINK_TYPES = new Set([
+	"oauth_apple",
+	"oauth_google",
+	"oauth_mock",
+	"oauth_custom_mock",
+	"saml"
+]);
+const RUST_SUPPORTED_SESSION_STATUSES = new Set([
+	"active",
+	"revoked",
+	"ended",
+	"expired",
+	"removed",
+	"abandoned",
+	"pending"
+]);
+const toUnixTimestamp = (date) => date ? Math.floor(date.getTime() / 1e3) : 0;
+const toNullableUnixTimestamp = (date) => date ? toUnixTimestamp(date) : null;
+const resourceTimestamps = (resource) => {
+	const timestamped = resource;
+	return {
+		created_at: toUnixTimestamp(timestamped.createdAt),
+		updated_at: toUnixTimestamp(timestamped.updatedAt)
+	};
 };
-const camelToSnake = (obj) => {
-	const res = {};
-	for (const [key, value] of Object.entries(obj)) res[strFromCamelToSnake(key)] = value;
-	return res;
-};
-const clerkSignInToSignInJSON = (signIn) => ({
-	object: "sign_in",
-	id: signIn.id,
-	status: signIn.status,
-	supported_identifiers: [],
-	identifier: signIn.identifier,
-	user_data: {
-		first_name: signIn.userData?.firstName ?? "",
-		last_name: signIn.userData?.lastName ?? "",
-		image_url: signIn.userData?.imageUrl ?? "",
-		has_image: signIn.userData?.hasImage ?? false
-	},
-	supported_first_factors: signIn.supportedFirstFactors?.map(camelToSnake) ?? [],
-	supported_second_factors: signIn.supportedSecondFactors?.map(camelToSnake) ?? [],
-	first_factor_verification: null,
-	second_factor_verification: null,
-	created_session_id: signIn.createdSessionId
-});
+const clerkIdentificationLinksToJSON = (links) => links.filter((link) => RUST_SUPPORTED_IDENTIFICATION_LINK_TYPES.has(link.type)).map((link) => ({
+	object: "",
+	id: link.id,
+	type: link.type
+}));
 const clerkClientToClientJSON = (client) => ({
 	object: "client",
 	id: client.id,
-	sessions: client.sessions.map(clerkSessionToSessionJSON),
-	sign_up: client.signUp ? clerkSignUpToSignUpJSON(client.signUp) : null,
-	sign_in: client.signIn ? clerkSignInToSignInJSON(client.signIn) : null,
+	sessions: client.sessions.filter((session) => RUST_SUPPORTED_SESSION_STATUSES.has(session.status)).map((session) => clerkSessionToSessionJSON(session)),
+	sign_up: null,
+	sign_in: null,
 	captcha_bypass: client.captchaBypass,
 	last_active_session_id: client.lastActiveSessionId,
 	last_authentication_strategy: client.lastAuthenticationStrategy,
-	cookie_expires_at: client.cookieExpiresAt ? client.cookieExpiresAt.getTime() / 1e3 : null,
-	created_at: client.createdAt ? client.createdAt.getTime() / 1e3 : 0,
-	updated_at: client.updatedAt ? client.updatedAt.getTime() / 1e3 : 0
+	cookie_expires_at: client.cookieExpiresAt ? toUnixTimestamp(client.cookieExpiresAt) : null,
+	created_at: toUnixTimestamp(client.createdAt),
+	updated_at: toUnixTimestamp(client.updatedAt)
 });
 const clerkSessionToSessionJSON = (session) => ({
 	object: "session",
 	id: session.id,
 	status: session.status,
-	factor_verification_age: session.factorVerificationAge,
-	expire_at: session.expireAt.getTime() / 1e3,
-	abandon_at: session.abandonAt.getTime() / 1e3,
-	last_active_at: session.lastActiveAt.getTime() / 1e3,
-	last_active_token: {
+	factor_verification_age: session.factorVerificationAge ?? [],
+	expire_at: toUnixTimestamp(session.expireAt),
+	abandon_at: toUnixTimestamp(session.abandonAt),
+	last_active_at: toUnixTimestamp(session.lastActiveAt),
+	last_active_token: session.lastActiveToken ? {
 		object: "token",
 		id: session.lastActiveToken.id,
 		jwt: session.lastActiveToken.getRawString()
-	},
+	} : null,
 	last_active_organization_id: session.lastActiveOrganizationId,
 	actor: session.actor,
 	tasks: session.tasks,
-	user: clerkUserToUserJSON(session.user),
+	user: session.user ? clerkUserToUserJSON(session.user) : null,
 	public_user_data: clerkPublicUserDataToPublicUserDataJSON(session.publicUserData),
-	created_at: session.createdAt.getTime() / 1e3,
-	updated_at: session.updatedAt.getTime() / 1e3
+	created_at: toUnixTimestamp(session.createdAt),
+	updated_at: toUnixTimestamp(session.updatedAt)
 });
 const clerkEmailAddressToEmailAdressJSON = (emailAddress) => ({
 	object: "email_address",
 	id: emailAddress.id,
 	email_address: emailAddress.emailAddress,
-	linked_to: emailAddress.linkedTo.map((l) => ({
-		object: "",
-		id: l.id,
-		type: l.type
-	})),
+	linked_to: clerkIdentificationLinksToJSON(emailAddress.linkedTo),
 	matches_sso_connection: emailAddress.matchesSsoConnection,
+	reserved: false,
+	...resourceTimestamps(emailAddress),
 	verification: null
 });
 const clerkPhoneNumberToPhoneNumberJSON = (phoneNumber) => ({
@@ -239,17 +212,17 @@ const clerkPhoneNumberToPhoneNumberJSON = (phoneNumber) => ({
 	phone_number: phoneNumber.phoneNumber,
 	reserved_for_second_factor: phoneNumber.reservedForSecondFactor,
 	default_second_factor: phoneNumber.defaultSecondFactor,
-	linked_to: phoneNumber.linkedTo.map((l) => ({
-		object: "",
-		id: l.id,
-		type: l.type
-	})),
-	verification: null
+	linked_to: clerkIdentificationLinksToJSON(phoneNumber.linkedTo),
+	reserved: false,
+	...resourceTimestamps(phoneNumber),
+	verification: null,
+	backup_codes: phoneNumber.backupCodes
 });
 const clerkWeb3WalletToWeb3WalletJSON = (web3Wallet) => ({
 	object: "web3_wallet",
 	id: web3Wallet.id,
 	web3_wallet: web3Wallet.web3Wallet,
+	...resourceTimestamps(web3Wallet),
 	verification: null
 });
 const clerkExternalAccountToExternalAccountJSON = (externalAccount) => ({
@@ -266,7 +239,9 @@ const clerkExternalAccountToExternalAccountJSON = (externalAccount) => ({
 	username: externalAccount.username ?? "",
 	phone_number: externalAccount.phoneNumber ?? "",
 	public_metadata: externalAccount.publicMetadata,
-	label: externalAccount.label ?? ""
+	label: externalAccount.label ?? "",
+	...resourceTimestamps(externalAccount),
+	verification: null
 });
 const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (enterpriseAccountConnection) => ({
 	object: "enterprise_account_connection",
@@ -275,6 +250,7 @@ const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (enter
 	allow_idp_initiated: enterpriseAccountConnection.allowIdpInitiated,
 	allow_subdomains: enterpriseAccountConnection.allowSubdomains,
 	disable_additional_identifications: enterpriseAccountConnection.disableAdditionalIdentifications,
+	allow_organization_account_linking: enterpriseAccountConnection.allowOrganizationAccountLinking,
 	domain: enterpriseAccountConnection.domain,
 	logo_public_url: enterpriseAccountConnection.logoPublicUrl,
 	name: enterpriseAccountConnection.name,
@@ -299,16 +275,16 @@ const clerkEnterpriseAccountToEnterpriseAccountJSON = (enterpriseAccount) => ({
 	public_metadata: enterpriseAccount.publicMetadata ?? {},
 	verification: null,
 	enterprise_connection_id: enterpriseAccount.enterpriseConnectionId,
-	last_authenticated_at: enterpriseAccount.lastAuthenticatedAt ? enterpriseAccount.lastAuthenticatedAt.getTime() / 1e3 : null
+	last_authenticated_at: enterpriseAccount.lastAuthenticatedAt ? toUnixTimestamp(enterpriseAccount.lastAuthenticatedAt) : null
 });
 const clerkPasskeyToPasskeyJSON = (passkey) => ({
 	object: "passkey",
 	id: passkey.id,
 	name: passkey.name,
 	verification: null,
-	last_used_at: passkey.lastUsedAt ? passkey.lastUsedAt.getTime() / 1e3 : null,
-	updated_at: passkey.createdAt.getTime() / 1e3,
-	created_at: passkey.createdAt.getTime() / 1e3
+	last_used_at: toNullableUnixTimestamp(passkey.lastUsedAt),
+	updated_at: toUnixTimestamp(passkey.createdAt),
+	created_at: toUnixTimestamp(passkey.createdAt)
 });
 const clerkPublicUserDataToPublicUserDataJSON = (publicUserData) => {
 	const res = {
@@ -330,43 +306,54 @@ const clerkOrganizationMembershipToOrganizationMembershipJSON = (organizationMem
 	public_user_data: clerkPublicUserDataToPublicUserDataJSON(organizationMembership.publicUserData),
 	role: organizationMembership.role,
 	role_name: organizationMembership.roleName,
-	created_at: organizationMembership.createdAt.getTime() / 1e3,
-	updated_at: organizationMembership.updatedAt.getTime() / 1e3
+	created_at: toUnixTimestamp(organizationMembership.createdAt),
+	updated_at: toUnixTimestamp(organizationMembership.updatedAt)
 });
-const clerkUserToUserJSON = (user) => ({
-	object: "user",
-	id: user.id,
-	external_id: user.externalId,
-	primary_email_address_id: user.primaryEmailAddressId,
-	primary_phone_number_id: user.primaryPhoneNumberId,
-	primary_web3_wallet_id: user.primaryWeb3WalletId,
-	image_url: user.imageUrl,
-	has_image: user.hasImage,
-	username: user.username,
-	email_addresses: user.emailAddresses.map(clerkEmailAddressToEmailAdressJSON),
-	phone_numbers: user.phoneNumbers.map(clerkPhoneNumberToPhoneNumberJSON),
-	web3_wallets: user.web3Wallets.map(clerkWeb3WalletToWeb3WalletJSON),
-	external_accounts: user.externalAccounts.map(clerkExternalAccountToExternalAccountJSON),
-	enterprise_accounts: user.enterpriseAccounts.map(clerkEnterpriseAccountToEnterpriseAccountJSON),
-	passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
-	organization_memberships: user.organizationMemberships.map(clerkOrganizationMembershipToOrganizationMembershipJSON),
-	password_enabled: user.passwordEnabled,
-	profile_image_id: user.imageUrl,
-	first_name: user.firstName,
-	last_name: user.lastName,
-	totp_enabled: user.totpEnabled,
-	backup_code_enabled: user.backupCodeEnabled,
-	two_factor_enabled: user.twoFactorEnabled,
-	public_metadata: user.publicMetadata,
-	unsafe_metadata: user.unsafeMetadata,
-	last_sign_in_at: user.lastSignInAt ? user.lastSignInAt.getTime() / 1e3 : null,
-	create_organization_enabled: user.createOrganizationEnabled,
-	create_organizations_limit: user.createOrganizationsLimit,
-	delete_self_enabled: user.deleteSelfEnabled,
-	legal_accepted_at: user.legalAcceptedAt ? user.legalAcceptedAt.getTime() / 1e3 : null,
-	updated_at: user.updatedAt ? user.updatedAt.getTime() / 1e3 : 0,
-	created_at: user.createdAt ? user.createdAt.getTime() / 1e3 : 0
-});
+const clerkUserToUserJSON = (user) => {
+	const compatibility = user;
+	return {
+		object: "user",
+		id: user.id,
+		external_id: user.externalId,
+		primary_email_address_id: user.primaryEmailAddressId,
+		primary_phone_number_id: user.primaryPhoneNumberId,
+		primary_web3_wallet_id: user.primaryWeb3WalletId,
+		image_url: user.imageUrl,
+		has_image: user.hasImage,
+		username: user.username,
+		email_addresses: user.emailAddresses.map(clerkEmailAddressToEmailAdressJSON),
+		phone_numbers: user.phoneNumbers.map(clerkPhoneNumberToPhoneNumberJSON),
+		web3_wallets: user.web3Wallets.map(clerkWeb3WalletToWeb3WalletJSON),
+		external_accounts: user.externalAccounts.map(clerkExternalAccountToExternalAccountJSON),
+		enterprise_accounts: user.enterpriseAccounts.map(clerkEnterpriseAccountToEnterpriseAccountJSON),
+		passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
+		organization_memberships: user.organizationMemberships.map(clerkOrganizationMembershipToOrganizationMembershipJSON),
+		saml_accounts: [],
+		password_enabled: user.passwordEnabled,
+		profile_image_id: user.imageUrl,
+		first_name: user.firstName,
+		last_name: user.lastName,
+		totp_enabled: user.totpEnabled,
+		backup_code_enabled: user.backupCodeEnabled,
+		two_factor_enabled: user.twoFactorEnabled,
+		public_metadata: user.publicMetadata,
+		unsafe_metadata: user.unsafeMetadata,
+		last_sign_in_at: toNullableUnixTimestamp(user.lastSignInAt),
+		banned: compatibility.banned ?? false,
+		locked: compatibility.locked ?? false,
+		lockout_expires_in_seconds: compatibility.lockoutExpiresInSeconds ?? null,
+		verification_attempts_remaining: compatibility.verificationAttemptsRemaining ?? null,
+		last_active_at: toNullableUnixTimestamp(compatibility.lastActiveAt),
+		mfa_enabled_at: toNullableUnixTimestamp(compatibility.mfaEnabledAt),
+		mfa_disabled_at: toNullableUnixTimestamp(compatibility.mfaDisabledAt),
+		create_organization_enabled: user.createOrganizationEnabled,
+		create_organizations_limit: user.createOrganizationsLimit,
+		delete_self_enabled: user.deleteSelfEnabled,
+		legal_accepted_at: toNullableUnixTimestamp(user.legalAcceptedAt),
+		updated_at: toUnixTimestamp(user.updatedAt),
+		created_at: toUnixTimestamp(user.createdAt)
+	};
+};
 const clerkOrganizationToOrganizationJSON = (organization) => ({
 	object: "organization",
 	id: organization.id,
@@ -375,10 +362,10 @@ const clerkOrganizationToOrganizationJSON = (organization) => ({
 	name: organization.name,
 	slug: organization.slug ?? "",
 	public_metadata: organization.publicMetadata,
-	created_at: organization.createdAt.getTime() / 1e3,
-	updated_at: organization.updatedAt.getTime() / 1e3,
+	created_at: toUnixTimestamp(organization.createdAt),
+	updated_at: toUnixTimestamp(organization.updatedAt),
 	members_count: organization.membersCount,
-	pending_invitations_count: organization.membersCount,
+	pending_invitations_count: organization.pendingInvitationsCount,
 	admin_delete_enabled: organization.adminDeleteEnabled,
 	max_allowed_memberships: organization.maxAllowedMemberships
 });

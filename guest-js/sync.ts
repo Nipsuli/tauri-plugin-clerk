@@ -85,7 +85,7 @@ export const initListener = async (clerk: Clerk): Promise<void> => {
   await listen<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, (event) => {
     const authEvent = event.payload;
     if (authEvent.source !== __internalWindowLabel) {
-      logger.debug({ authEvent }, "Plugin:clerk: received auth event");
+      logger.debug({}, "Plugin:clerk: received auth state change");
       if (shouldUpdate(clerk.client, authEvent.payload.client)) {
         logger.debug({}, "Plugin:clerk: refreshing session");
         // TODO: figure out how to sync Clerk state from
@@ -97,7 +97,7 @@ export const initListener = async (clerk: Clerk): Promise<void> => {
 };
 
 export const emitClerkAuthEvent = (payload: ClerkAuthEventPayload): void => {
-  logger.debug({ payload }, "Plugin:clerk: emitting auth event");
+  logger.debug({}, "Plugin:clerk: emitting auth state change");
   emit<ClerkAuthEvent>(CLERK_AUTH_EVENT_NAME, {
     source: __internalWindowLabel,
     payload,

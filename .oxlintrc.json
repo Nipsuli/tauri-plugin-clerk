@@ -46,6 +46,7 @@
     "eslint/max-statements": "off",
     "unicorn/catch-error-name": "off",
     "eslint/no-shadow": "off",
-    "eslint/init-declarations": "off"
+    "eslint/init-declarations": "off",
+    "eslint/no-underscore-dangle": "off"
   }
 }

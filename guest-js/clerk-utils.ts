@@ -27,205 +27,191 @@ import type {
   PublicUserDataJSON,
   SessionJSON,
   SessionResource,
-  SignInJSON,
-  SignInResource,
-  SignUpJSON,
-  SignUpResource,
   UserJSON,
   UserResource,
   Web3WalletJSON,
   Web3WalletResource,
 } from "@clerk/shared/types";
 
-const clerkSignUpToSignUpJSON = (signUp: SignUpResource): SignUpJSON => ({
-  object: "sign_up",
-  id: signUp.id!, // oxlint-disable-line typescript/no-non-null-assertion
-  status: signUp.status!, // oxlint-disable-line typescript/no-non-null-assertion
-  required_fields: signUp.requiredFields,
-  optional_fields: signUp.optionalFields,
-  missing_fields: signUp.missingFields,
-  unverified_fields: signUp.unverifiedFields,
-  username: signUp.username,
-  first_name: signUp.firstName,
-  last_name: signUp.lastName,
-  email_address: signUp.emailAddress,
-  phone_number: signUp.phoneNumber,
-  web3_wallet: signUp.web3wallet,
-  external_account_strategy: null,
-  external_account: null,
-  has_password: signUp.hasPassword,
-  unsafe_metadata: signUp.unsafeMetadata,
-  created_session_id: signUp.createdSessionId,
-  created_user_id: signUp.createdUserId,
-  abandon_at: signUp.abandonAt,
-  legal_accepted_at: signUp.legalAcceptedAt,
-  // nullify this as the VerificationJSON is messed up
-  verifications: null,
-  locale: signUp.locale,
-});
-
-// Copy From @clerk/shared/types
-type CamelToSnake<T> = T extends `${infer C0}${infer R}`
-  ? `${C0 extends Uppercase<C0> ? "_" : ""}${Lowercase<C0>}${CamelToSnake<R>}`
-  : T extends object
-    ? {
-        [K in keyof T as CamelToSnake<Extract<K, string>>]: T[K];
-      }
-    : T;
-
-const strFromCamelToSnake = (str: string): string => {
-  if (!str) {
-    return "";
-  }
-  return str.replace(/[A-Z]/g, (match, offset: number) => {
-    if (offset === 0) {
-      return match.toLowerCase();
-    } else {
-      return `_${match.toLowerCase()}`;
-    }
-  });
+type TimestampedResource = {
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
 };
 
-const camelToSnake = <T extends object>(obj: T): CamelToSnake<T> => {
-  const res: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    res[strFromCamelToSnake(key)] = value;
-  }
-  return res as CamelToSnake<T>;
+type RustUserCompatibilityFields = {
+  banned?: boolean;
+  locked?: boolean;
+  lockoutExpiresInSeconds?: number | null;
+  verificationAttemptsRemaining?: number | null;
+  lastActiveAt?: Date | null;
+  mfaEnabledAt?: Date | null;
+  mfaDisabledAt?: Date | null;
 };
 
-const clerkSignInToSignInJSON = (signIn: SignInResource): SignInJSON => ({
-  object: "sign_in",
-  id: signIn.id!, // oxlint-disable-line typescript/no-non-null-assertion
-  status: signIn.status!, // oxlint-disable-line typescript/no-non-null-assertion
-  supported_identifiers: [],
-  identifier: signIn.identifier!, // oxlint-disable-line typescript/no-non-null-assertion
-  user_data: {
-    first_name: signIn.userData?.firstName ?? "",
-    last_name: signIn.userData?.lastName ?? "",
-    image_url: signIn.userData?.imageUrl ?? "",
-    has_image: signIn.userData?.hasImage ?? false,
-  },
-  supported_first_factors:
-    signIn.supportedFirstFactors?.map(camelToSnake) ?? [],
-  supported_second_factors:
-    signIn.supportedSecondFactors?.map(camelToSnake) ?? [],
-  // nullify this as the VerificationJSON is messed up
-  first_factor_verification: null,
-  // nullify this as the VerificationJSON is messed up
-  second_factor_verification: null,
-  created_session_id: signIn.createdSessionId,
-});
+const RUST_SUPPORTED_IDENTIFICATION_LINK_TYPES = new Set([
+  "oauth_apple",
+  "oauth_google",
+  "oauth_mock",
+  "oauth_custom_mock",
+  "saml",
+]);
+
+const RUST_SUPPORTED_SESSION_STATUSES = new Set([
+  "active",
+  "revoked",
+  "ended",
+  "expired",
+  "removed",
+  "abandoned",
+  "pending",
+]);
+
+const toUnixTimestamp = (date: Date | null | undefined): number =>
+  date ? Math.floor(date.getTime() / 1000) : 0;
+
+const toNullableUnixTimestamp = (
+  date: Date | null | undefined,
+): number | null => (date ? toUnixTimestamp(date) : null);
+
+const resourceTimestamps = (
+  resource: object,
+): { created_at: number; updated_at: number } => {
+  const timestamped = resource as TimestampedResource;
+  return {
+    created_at: toUnixTimestamp(timestamped.createdAt),
+    updated_at: toUnixTimestamp(timestamped.updatedAt),
+  };
+};
+
+const clerkIdentificationLinksToJSON = (
+  links: EmailAddressResource["linkedTo"],
+) =>
+  links
+    .filter((link) => RUST_SUPPORTED_IDENTIFICATION_LINK_TYPES.has(link.type))
+    .map((link) => ({
+      object: "",
+      id: link.id,
+      type: link.type,
+    }));
 
 export const clerkClientToClientJSON = (
   client: ClientResource,
 ): ClientJSON => ({
   object: "client",
   id: client.id!, // oxlint-disable-line typescript/no-non-null-assertion
-  sessions: client.sessions.map(clerkSessionToSessionJSON),
-  sign_up: client.signUp ? clerkSignUpToSignUpJSON(client.signUp) : null,
-  sign_in: client.signIn ? clerkSignInToSignInJSON(client.signIn) : null,
+  sessions: client.sessions
+    .filter((session) => RUST_SUPPORTED_SESSION_STATUSES.has(session.status))
+    .map((session) => clerkSessionToSessionJSON(session)),
+  // In-progress attempts are transient JS-owned state. Clerk's SignInJSON and
+  // SignUpJSON wire schemas differ from clerk-fapi-rs, so persisting them would
+  // make the entire client snapshot impossible to restore on the Rust side.
+  sign_up: null,
+  sign_in: null,
   captcha_bypass: client.captchaBypass,
   last_active_session_id: client.lastActiveSessionId,
   last_authentication_strategy: client.lastAuthenticationStrategy,
   cookie_expires_at: client.cookieExpiresAt
-    ? client.cookieExpiresAt.getTime() / 1000
+    ? toUnixTimestamp(client.cookieExpiresAt)
     : null,
-  created_at: client.createdAt ? client.createdAt.getTime() / 1000 : 0,
-  updated_at: client.updatedAt ? client.updatedAt.getTime() / 1000 : 0,
+  created_at: toUnixTimestamp(client.createdAt),
+  updated_at: toUnixTimestamp(client.updatedAt),
 });
 
 export const clerkSessionToSessionJSON = (
   session: SessionResource,
-): SessionJSON => ({
-  object: "session",
-  id: session.id,
-  status: session.status,
-  factor_verification_age: session.factorVerificationAge,
-  expire_at: session.expireAt.getTime() / 1000,
-  abandon_at: session.abandonAt.getTime() / 1000,
-  last_active_at: session.lastActiveAt.getTime() / 1000,
-  last_active_token: {
-    object: "token",
-    id: session.lastActiveToken!.id!, // oxlint-disable-line typescript/no-non-null-assertion
-    jwt: session.lastActiveToken!.getRawString(), // oxlint-disable-line typescript/no-non-null-assertion
-  },
-  last_active_organization_id: session.lastActiveOrganizationId,
-  actor: session.actor,
-  tasks: session.tasks,
-  user: clerkUserToUserJSON(session.user!), // oxlint-disable-line typescript/no-non-null-assertion
-  public_user_data: clerkPublicUserDataToPublicUserDataJSON(
-    session.publicUserData,
-  ),
-  created_at: session.createdAt.getTime() / 1000,
-  updated_at: session.updatedAt.getTime() / 1000,
-});
+): SessionJSON =>
+  ({
+    object: "session",
+    id: session.id,
+    status: session.status,
+    factor_verification_age: session.factorVerificationAge ?? [],
+    expire_at: toUnixTimestamp(session.expireAt),
+    abandon_at: toUnixTimestamp(session.abandonAt),
+    last_active_at: toUnixTimestamp(session.lastActiveAt),
+    last_active_token: session.lastActiveToken
+      ? {
+          object: "token",
+          id: session.lastActiveToken.id!, // oxlint-disable-line typescript/no-non-null-assertion
+          jwt: session.lastActiveToken.getRawString(),
+        }
+      : null,
+    last_active_organization_id: session.lastActiveOrganizationId,
+    actor: session.actor,
+    tasks: session.tasks,
+    user: session.user ? clerkUserToUserJSON(session.user) : null,
+    public_user_data: clerkPublicUserDataToPublicUserDataJSON(
+      session.publicUserData,
+    ),
+    created_at: toUnixTimestamp(session.createdAt),
+    updated_at: toUnixTimestamp(session.updatedAt),
+  }) as SessionJSON;
 
 const clerkEmailAddressToEmailAdressJSON = (
   emailAddress: EmailAddressResource,
-): EmailAddressJSON => ({
-  object: "email_address",
-  id: emailAddress.id,
-  email_address: emailAddress.emailAddress,
-  linked_to: emailAddress.linkedTo.map((l) => ({
-    // the api typing doesn't have object name for this
-    object: "",
-    id: l.id,
-    type: l.type,
-  })),
-  matches_sso_connection: emailAddress.matchesSsoConnection,
-  // nullify this as the VerificationJSON is messed up
-  verification: null,
-});
+): EmailAddressJSON =>
+  ({
+    object: "email_address",
+    id: emailAddress.id,
+    email_address: emailAddress.emailAddress,
+    linked_to: clerkIdentificationLinksToJSON(emailAddress.linkedTo),
+    matches_sso_connection: emailAddress.matchesSsoConnection,
+    reserved: false,
+    ...resourceTimestamps(emailAddress),
+    // nullify this as the VerificationJSON is mismatched between the SDKs
+    verification: null,
+  }) as EmailAddressJSON;
 
 const clerkPhoneNumberToPhoneNumberJSON = (
   phoneNumber: PhoneNumberResource,
-): PhoneNumberJSON => ({
-  object: "phone_number",
-  id: phoneNumber.id,
-  phone_number: phoneNumber.phoneNumber,
-  reserved_for_second_factor: phoneNumber.reservedForSecondFactor,
-  default_second_factor: phoneNumber.defaultSecondFactor,
-  linked_to: phoneNumber.linkedTo.map((l) => ({
-    // the api typing doesn't have object name for this
-    object: "",
-    id: l.id,
-    type: l.type,
-  })),
-  // nullify this as the VerificationJSON is messed up
-  verification: null,
-  // Skipping optional backup_codes
-});
+): PhoneNumberJSON =>
+  ({
+    object: "phone_number",
+    id: phoneNumber.id,
+    phone_number: phoneNumber.phoneNumber,
+    reserved_for_second_factor: phoneNumber.reservedForSecondFactor,
+    default_second_factor: phoneNumber.defaultSecondFactor,
+    linked_to: clerkIdentificationLinksToJSON(phoneNumber.linkedTo),
+    reserved: false,
+    ...resourceTimestamps(phoneNumber),
+    // nullify this as the VerificationJSON is mismatched between the SDKs
+    verification: null,
+    backup_codes: phoneNumber.backupCodes,
+  }) as PhoneNumberJSON;
 
 const clerkWeb3WalletToWeb3WalletJSON = (
   web3Wallet: Web3WalletResource,
-): Web3WalletJSON => ({
-  object: "web3_wallet",
-  id: web3Wallet.id,
-  web3_wallet: web3Wallet.web3Wallet,
-  // nullify this as the VerificationJSON is messed up
-  verification: null,
-});
+): Web3WalletJSON =>
+  ({
+    object: "web3_wallet",
+    id: web3Wallet.id,
+    web3_wallet: web3Wallet.web3Wallet,
+    ...resourceTimestamps(web3Wallet),
+    // nullify this as the VerificationJSON is mismatched between the SDKs
+    verification: null,
+  }) as Web3WalletJSON;
 
 const clerkExternalAccountToExternalAccountJSON = (
   externalAccount: ExternalAccountResource,
-): ExternalAccountJSON => ({
-  object: "external_account",
-  id: externalAccount.id,
-  provider: externalAccount.provider,
-  identification_id: externalAccount.identificationId,
-  provider_user_id: externalAccount.providerUserId,
-  approved_scopes: externalAccount.approvedScopes,
-  email_address: externalAccount.emailAddress,
-  first_name: externalAccount.firstName,
-  last_name: externalAccount.lastName,
-  image_url: externalAccount.imageUrl,
-  username: externalAccount.username ?? "",
-  phone_number: externalAccount.phoneNumber ?? "",
-  public_metadata: externalAccount.publicMetadata,
-  label: externalAccount.label ?? "",
-  // skipping optional verification as VerificationJSON is messed up
-});
+): ExternalAccountJSON =>
+  ({
+    object: "external_account",
+    id: externalAccount.id,
+    provider: externalAccount.provider,
+    identification_id: externalAccount.identificationId,
+    provider_user_id: externalAccount.providerUserId,
+    approved_scopes: externalAccount.approvedScopes,
+    email_address: externalAccount.emailAddress,
+    first_name: externalAccount.firstName,
+    last_name: externalAccount.lastName,
+    image_url: externalAccount.imageUrl,
+    username: externalAccount.username ?? "",
+    phone_number: externalAccount.phoneNumber ?? "",
+    public_metadata: externalAccount.publicMetadata,
+    label: externalAccount.label ?? "",
+    ...resourceTimestamps(externalAccount),
+    // nullify this as the VerificationJSON is mismatched between the SDKs
+    verification: null,
+  }) as unknown as ExternalAccountJSON;
 
 const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (
   enterpriseAccountConnection: EnterpriseAccountConnectionResource,
@@ -237,6 +223,8 @@ const clerkEnterpriseAccountConnectionToEnterpriseAccountConnectionJSON = (
   allow_subdomains: enterpriseAccountConnection.allowSubdomains,
   disable_additional_identifications:
     enterpriseAccountConnection.disableAdditionalIdentifications,
+  allow_organization_account_linking:
+    enterpriseAccountConnection.allowOrganizationAccountLinking,
   domain: enterpriseAccountConnection.domain,
   logo_public_url: enterpriseAccountConnection.logoPublicUrl,
   name: enterpriseAccountConnection.name,
@@ -271,7 +259,7 @@ const clerkEnterpriseAccountToEnterpriseAccountJSON = (
   verification: null,
   enterprise_connection_id: enterpriseAccount.enterpriseConnectionId,
   last_authenticated_at: enterpriseAccount.lastAuthenticatedAt
-    ? enterpriseAccount.lastAuthenticatedAt.getTime() / 1000
+    ? toUnixTimestamp(enterpriseAccount.lastAuthenticatedAt)
     : null,
 });
 
@@ -280,9 +268,9 @@ const clerkPasskeyToPasskeyJSON = (passkey: PasskeyResource): PasskeyJSON => ({
   id: passkey.id,
   name: passkey.name,
   verification: null,
-  last_used_at: passkey.lastUsedAt ? passkey.lastUsedAt.getTime() / 1000 : null,
-  updated_at: passkey.createdAt.getTime() / 1000,
-  created_at: passkey.createdAt.getTime() / 1000,
+  last_used_at: toNullableUnixTimestamp(passkey.lastUsedAt),
+  updated_at: toUnixTimestamp(passkey.createdAt),
+  created_at: toUnixTimestamp(passkey.createdAt),
 });
 
 const clerkPublicUserDataToPublicUserDataJSON = (
@@ -317,54 +305,65 @@ const clerkOrganizationMembershipToOrganizationMembershipJSON = (
   ),
   role: organizationMembership.role,
   role_name: organizationMembership.roleName,
-  created_at: organizationMembership.createdAt.getTime() / 1000,
-  updated_at: organizationMembership.updatedAt.getTime() / 1000,
+  created_at: toUnixTimestamp(organizationMembership.createdAt),
+  updated_at: toUnixTimestamp(organizationMembership.updatedAt),
 });
 
-export const clerkUserToUserJSON = (user: UserResource): UserJSON => ({
-  object: "user",
-  id: user.id,
-  external_id: user.externalId,
-  primary_email_address_id: user.primaryEmailAddressId,
-  primary_phone_number_id: user.primaryPhoneNumberId,
-  primary_web3_wallet_id: user.primaryWeb3WalletId,
-  image_url: user.imageUrl,
-  has_image: user.hasImage,
-  username: user.username,
-  email_addresses: user.emailAddresses.map(clerkEmailAddressToEmailAdressJSON),
-  phone_numbers: user.phoneNumbers.map(clerkPhoneNumberToPhoneNumberJSON),
-  web3_wallets: user.web3Wallets.map(clerkWeb3WalletToWeb3WalletJSON),
-  external_accounts: user.externalAccounts.map(
-    clerkExternalAccountToExternalAccountJSON,
-  ),
-  enterprise_accounts: user.enterpriseAccounts.map(
-    clerkEnterpriseAccountToEnterpriseAccountJSON,
-  ),
-  passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
-  organization_memberships: user.organizationMemberships.map(
-    clerkOrganizationMembershipToOrganizationMembershipJSON,
-  ),
-  password_enabled: user.passwordEnabled,
-  profile_image_id: user.imageUrl,
-  first_name: user.firstName,
-  last_name: user.lastName,
-  totp_enabled: user.totpEnabled,
-  backup_code_enabled: user.backupCodeEnabled,
-  two_factor_enabled: user.twoFactorEnabled,
-  public_metadata: user.publicMetadata,
-  unsafe_metadata: user.unsafeMetadata,
-  last_sign_in_at: user.lastSignInAt
-    ? user.lastSignInAt.getTime() / 1000
-    : null,
-  create_organization_enabled: user.createOrganizationEnabled,
-  create_organizations_limit: user.createOrganizationsLimit,
-  delete_self_enabled: user.deleteSelfEnabled,
-  legal_accepted_at: user.legalAcceptedAt
-    ? user.legalAcceptedAt.getTime() / 1000
-    : null,
-  updated_at: user.updatedAt ? user.updatedAt.getTime() / 1000 : 0,
-  created_at: user.createdAt ? user.createdAt.getTime() / 1000 : 0,
-});
+export const clerkUserToUserJSON = (user: UserResource): UserJSON => {
+  const compatibility = user as UserResource & RustUserCompatibilityFields;
+
+  return {
+    object: "user",
+    id: user.id,
+    external_id: user.externalId,
+    primary_email_address_id: user.primaryEmailAddressId,
+    primary_phone_number_id: user.primaryPhoneNumberId,
+    primary_web3_wallet_id: user.primaryWeb3WalletId,
+    image_url: user.imageUrl,
+    has_image: user.hasImage,
+    username: user.username,
+    email_addresses: user.emailAddresses.map(
+      clerkEmailAddressToEmailAdressJSON,
+    ),
+    phone_numbers: user.phoneNumbers.map(clerkPhoneNumberToPhoneNumberJSON),
+    web3_wallets: user.web3Wallets.map(clerkWeb3WalletToWeb3WalletJSON),
+    external_accounts: user.externalAccounts.map(
+      clerkExternalAccountToExternalAccountJSON,
+    ),
+    enterprise_accounts: user.enterpriseAccounts.map(
+      clerkEnterpriseAccountToEnterpriseAccountJSON,
+    ),
+    passkeys: user.passkeys.map(clerkPasskeyToPasskeyJSON),
+    organization_memberships: user.organizationMemberships.map(
+      clerkOrganizationMembershipToOrganizationMembershipJSON,
+    ),
+    saml_accounts: [],
+    password_enabled: user.passwordEnabled,
+    profile_image_id: user.imageUrl,
+    first_name: user.firstName,
+    last_name: user.lastName,
+    totp_enabled: user.totpEnabled,
+    backup_code_enabled: user.backupCodeEnabled,
+    two_factor_enabled: user.twoFactorEnabled,
+    public_metadata: user.publicMetadata,
+    unsafe_metadata: user.unsafeMetadata,
+    last_sign_in_at: toNullableUnixTimestamp(user.lastSignInAt),
+    banned: compatibility.banned ?? false,
+    locked: compatibility.locked ?? false,
+    lockout_expires_in_seconds: compatibility.lockoutExpiresInSeconds ?? null,
+    verification_attempts_remaining:
+      compatibility.verificationAttemptsRemaining ?? null,
+    last_active_at: toNullableUnixTimestamp(compatibility.lastActiveAt),
+    mfa_enabled_at: toNullableUnixTimestamp(compatibility.mfaEnabledAt),
+    mfa_disabled_at: toNullableUnixTimestamp(compatibility.mfaDisabledAt),
+    create_organization_enabled: user.createOrganizationEnabled,
+    create_organizations_limit: user.createOrganizationsLimit,
+    delete_self_enabled: user.deleteSelfEnabled,
+    legal_accepted_at: toNullableUnixTimestamp(user.legalAcceptedAt),
+    updated_at: toUnixTimestamp(user.updatedAt),
+    created_at: toUnixTimestamp(user.createdAt),
+  } as UserJSON;
+};
 
 export const clerkOrganizationToOrganizationJSON = (
   organization: OrganizationResource,
@@ -376,10 +375,10 @@ export const clerkOrganizationToOrganizationJSON = (
   name: organization.name,
   slug: organization.slug ?? "",
   public_metadata: organization.publicMetadata,
-  created_at: organization.createdAt.getTime() / 1000,
-  updated_at: organization.updatedAt.getTime() / 1000,
+  created_at: toUnixTimestamp(organization.createdAt),
+  updated_at: toUnixTimestamp(organization.updatedAt),
   members_count: organization.membersCount,
-  pending_invitations_count: organization.membersCount,
+  pending_invitations_count: organization.pendingInvitationsCount,
   admin_delete_enabled: organization.adminDeleteEnabled,
   max_allowed_memberships: organization.maxAllowedMemberships,
 });

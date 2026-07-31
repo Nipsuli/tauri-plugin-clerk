@@ -30,10 +30,11 @@
     "dev:js": "tsdown --watch ./guest-js",
     "prepublishOnly": "npm run build",
     "pretest": "npm build",
-    "format": "prettier --write \"guest-js/**/*.ts\"",
-    "checks:format": "prettier --check \"guest-js/**/*.ts\"",
+    "format": "prettier --write \"{guest-js,tests}/**/*.ts\"",
+    "checks:format": "prettier --check \"{guest-js,tests}/**/*.ts\"",
     "checks:types": "tsc --noEmit",
     "checks:lint": "oxlint guest-js",
+    "checks:test": "node --test tests/*.test.ts",
     "checks": "run-p checks:*"
   },
   "dependencies": {
