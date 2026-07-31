@@ -98,13 +98,21 @@ impl<R: Runtime, T: Manager<R>> crate::ClerkExt<R> for T {
             app_handle.listen(CLERK_AUTH_EVENT_NAME, move |event| {
                 let app_handle = app_handle_inner.clone();
                 let payload = event.payload();
-                if let Ok(payload) = serde_json::from_str::<ClerkAuthEvent>(payload) {
-                    if payload.source != RUST_EVENT_SOURCE {
-                        debug!("Received ClerkAuthEvent: {payload:?}");
-                        let _ = app_handle
-                            .clerk()
-                            .set_client(payload.payload.client.clone());
+                match serde_json::from_str::<ClerkAuthEvent>(payload) {
+                    Ok(payload) if payload.source != RUST_EVENT_SOURCE => {
+                        debug!("Received Clerk auth state change from JavaScript");
+                        if let Err(error) = app_handle.clerk().set_client(payload.payload.client) {
+                            tracing::warn!(
+                                %error,
+                                "Failed to persist Clerk auth state from JavaScript"
+                            );
+                        }
                     }
+                    Ok(_) => {}
+                    Err(error) => tracing::warn!(
+                        %error,
+                        "Rejected incompatible Clerk auth state from JavaScript"
+                    ),
                 }
             });
         }
